@@ -1,10 +1,12 @@
 import type { Layout } from "../types";
+import { DEFAULT_PALETTE } from "./palettes";
 
 /** The layout a first-time visitor sees: a small bedroom-study, 4.2 × 3.6 m. */
 export const SAMPLE_LAYOUT: Layout = {
   version: 1,
   projectName: "Bedroom Study",
   room: { width: 4.2, depth: 3.6, height: 2.7 },
+  palette: DEFAULT_PALETTE,
   furniture: [
     {
       id: "sample-bed",
@@ -45,6 +47,23 @@ export const SAMPLE_LAYOUT: Layout = {
       position: [3.3, 0, 2.5],
       rotation: 270,
       dimensions: { width: 0.48, depth: 0.52, height: 0.85 },
+    },
+    {
+      id: "sample-plant",
+      type: "plant",
+      name: "Fig tree",
+      position: [3.85, 0, 0.35],
+      rotation: 0,
+      dimensions: { width: 0.5, depth: 0.5, height: 1.3 },
+    },
+    {
+      id: "sample-plant-desk",
+      type: "plant",
+      name: "Desk plant",
+      // Elevation 75 cm: it sits on the desk top.
+      position: [3.95, 0.75, 2.95],
+      rotation: 0,
+      dimensions: { width: 0.22, depth: 0.22, height: 0.32 },
     },
   ],
   openings: [

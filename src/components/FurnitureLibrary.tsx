@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { CATALOG, FURNITURE_TYPES } from "../lib/catalog";
+import { CATALOG, FURNITURE_TYPES, PLANT_PRESETS } from "../lib/catalog";
 import { toCm } from "../lib/geometry";
 import { OPENING_CATALOG, OPENING_TYPES } from "../lib/openings";
 import { useEditor } from "../store/editorStore";
@@ -59,7 +59,7 @@ export function FurnitureLibrary() {
         <section className="section">
           <h2 className="section__title">Furniture</h2>
           <div className="library">
-            {FURNITURE_TYPES.map((type) => {
+            {FURNITURE_TYPES.filter((type) => type !== "plant").map((type) => {
               const { label, defaults } = CATALOG[type];
               return (
                 <LibraryCard
@@ -72,6 +72,22 @@ export function FurnitureLibrary() {
               );
             })}
           </div>
+        </section>
+
+        <section className="section">
+          <h2 className="section__title">Plants</h2>
+          <div className="library">
+            {PLANT_PRESETS.map(({ key, label, dimensions }) => (
+              <LibraryCard
+                key={key}
+                type="plant"
+                label={label}
+                size={`${toCm(dimensions.width)} × ${toCm(dimensions.height)}`}
+                onAdd={() => addFurniture("plant", { name: label, dimensions })}
+              />
+            ))}
+          </div>
+          <p className="library-hint">Drag a plant onto a desk or dresser to set it on top.</p>
         </section>
 
         <section className="section">

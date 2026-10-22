@@ -14,6 +14,9 @@ A browser-based 3D room planner. In **Edit** mode it behaves like a small CAD to
 
 - **Real-size rooms.** Enter width, depth and height in cm and the floor and walls are generated to match. Shrinking the room pulls furniture back inside.
 - **Parametric furniture.** Bed, desk, chair, cabinet and dresser are built from code, so they stay correct at any size. A cabinet under 1 m gets drawers, a taller one gets doors, so the same type works as a nightstand or a wardrobe. The dresser's grid of drawers adapts to its size: two columns from 1 m wide, one row per ~20 cm of height.
+- **Plants.** Floor and tabletop plants share one parametric model: tall ones grow a trunk, short ones stay bushy. Drag a plant over a desk, dresser or low cabinet and it lands on top.
+- **Color schemes.** Five curated palettes (Warm Oak, Nordic, Japandi, Mid-century, Plaster & Clay), switched in one click. Seven color roles (walls, floor, wood, dark wood, textiles, accent, hardware) can each be fine-tuned. Rule-based suggestions mark the palettes that suit the room, based on its floor area and how much window glass it has, and say why. Color tips flag furniture that blends into the walls, or dark walls in a small or dim room.
+- **Layout check.** A rule-based "linter" for rooms, with no AI. It flags overlapping pieces, blocked door swings, tall furniture in front of windows, desks without room for a chair, and drawers or doors with no space to open. It also gives softer tips: a tight side of the bed, or a desk or plant far from daylight. Every message includes the measured numbers, and clicking it jumps to the piece to move. Pieces with warnings are outlined in amber.
 - **Doors and windows.** Add them from the library, drag them along a wall or onto a different wall, and set width, height and sill height precisely. Walls are split around each opening, with no boolean geometry. Doors show their swing arc on the floor, so you can see what space to keep clear. In plan view, walls are cut at 1.2 m like an architectural floor plan, so windows show as the classic double line.
 - **Camera.** Orbit, pan and zoom in 3D. Switch to an orthographic **Plan** view for a true floor plan. Walls between the camera and the room cut away automatically.
 - **Select and move.** Click to select, then drag across the floor. Snapping goes to a 1, 5 or 10 cm grid, and edges within 6 cm of a wall stick flush to it. Hold Alt to move freely.
@@ -67,6 +70,9 @@ src/
   lib/
     catalog.ts             furniture types, default sizes, limits
     geometry.ts            footprint math, clamping, snapping, alignment
+    polygon.ts             2D overlap (separating axis test) and ray casting on the floor plane
+    layoutChecks.ts        the layout and color check rules
+    palettes.ts            palette presets, color contrast math, palette suggestions
     openings.ts            door/window catalog, wall coordinates, splitting walls around openings
     persistence.ts         localStorage load/save with validation
   store/
@@ -84,8 +90,8 @@ src/
     useOpeningDrag.ts      raycast-to-wall dragging
     Measurements.tsx       CAD-style dimension lines
     ScreenLabel.tsx        HTML label pinned to a 3D point
-    models/                parametric Bed, Desk, Chair, Cabinet
-  components/              toolbar, library, properties panel, SVG plan
+    models/                parametric Bed, Desk, Chair, Cabinet, Dresser, Plant
+  components/              toolbar, library, properties panel, style picker, SVG plan
 ```
 
 ## Reading the code (new to 3D?)
@@ -101,3 +107,5 @@ If you're new to 3D programming, this order goes from the basics to the interact
 7. **`scene/ScreenLabel.tsx`**: the reverse, projecting a 3D point onto the 2D screen.
 8. **`lib/openings.ts` → `scene/ClippedBox.tsx`**: holes in walls without CSG. The wall is split into boxes around each opening, and each box clips itself to the wall's animated height.
 9. **`scene/useOpeningDrag.ts`**: the same raycasting idea, but against vertical wall planes instead of the floor.
+10. **`scene/materials.ts` → `applyPalette`**: every mesh shares a handful of material objects, so recoloring the room is a few `color.set()` calls, with no re-render and no new geometry. The floor texture holds only the plank variation, and the material color tints it.
+11. **`lib/layoutChecks.ts`**: once the data is clean, design rules turn into short functions. Overlap uses the separating axis test, and clearance is measured by casting 2D rays.

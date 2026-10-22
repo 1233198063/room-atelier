@@ -8,6 +8,7 @@ import { ClippedBox, type CutHeights } from "./ClippedBox";
 import { createFloorTexture, FLOOR_TILE_M } from "./floorTexture";
 import { MATERIALS } from "./materials";
 import { OpeningItem } from "./OpeningItem";
+import { useFlaggedIds } from "./useFlaggedIds";
 
 const FLOOR_T = 0.04;
 const STUB_H = 0.06; // height a wall drops to when it's cut away
@@ -39,7 +40,9 @@ export function RoomShell() {
   const room = useEditor((s) => s.room);
   const view = useEditor((s) => s.view);
   const openings = useEditor((s) => s.openings);
+  const floorColor = useEditor((s) => s.palette.floor);
   const selectedId = useEditor((s) => s.selectedId);
+  const flagged = useFlaggedIds();
 
   const cut = useRef<CutHeights>({ back: room.height, front: room.height, left: room.height, right: room.height });
   const segments = useMemo(
@@ -74,7 +77,7 @@ export function RoomShell() {
     <group>
       <mesh position={[room.width / 2, -FLOOR_T / 2, room.depth / 2]} receiveShadow>
         <boxGeometry args={[room.width, FLOOR_T, room.depth]} />
-        <meshStandardMaterial map={floorTexture} roughness={0.78} />
+        <meshStandardMaterial map={floorTexture} color={floorColor} roughness={0.78} />
       </mesh>
 
       {segments.map(({ wall, seg }, i) => (
@@ -92,7 +95,14 @@ export function RoomShell() {
       ))}
 
       {openings.map((o) => (
-        <OpeningItem key={o.id} opening={o} room={room} cut={cut} selected={o.id === selectedId} />
+        <OpeningItem
+          key={o.id}
+          opening={o}
+          room={room}
+          cut={cut}
+          selected={o.id === selectedId}
+          flagged={flagged.has(o.id)}
+        />
       ))}
     </group>
   );

@@ -45,6 +45,15 @@ const PATHS: Record<ItemType, ReactNode> = {
       <path d="M11 35l-1 5M37 35l1 5" />
     </>
   ),
+  plant: (
+    <>
+      <path d="M16 31h16l-2.5 10h-11z" />
+      <path d="M24 31V16" />
+      <path d="M24 24c-6.5 0-10-3.5-10-9 6.5 0 10 3.5 10 9z" />
+      <path d="M24 19c0-6 3.5-10 9.5-10 0 6-3.5 10-9.5 10z" />
+      <path d="M24 28c4.5 0 8-2.5 8-6.5-4.5 0-8 2.5-8 6.5z" />
+    </>
+  ),
   door: (
     <>
       <path d="M6 41h36M13 41V7h22v34" />

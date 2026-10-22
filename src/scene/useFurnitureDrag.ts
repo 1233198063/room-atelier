@@ -1,7 +1,7 @@
 import { useThree, type ThreeEvent } from "@react-three/fiber";
 import { useCallback } from "react";
 import { Plane, Raycaster, Vector2, Vector3 } from "three";
-import { snapPosition } from "../lib/geometry";
+import { snapPosition, surfaceHeightAt } from "../lib/geometry";
 import { useEditor } from "../store/editorStore";
 
 /** The floor: the plane y = 0, with its normal pointing up. */
@@ -75,7 +75,9 @@ export function useFurnitureDrag(id: string) {
         if (s.snapStep > 0 && !ev.altKey) {
           [x, z] = snapPosition(x, z, current.dimensions, current.rotation, s.room, s.snapStep);
         }
-        s.updateFurniture(id, { position: [x, current.position[1], z] }, { history: false });
+        // Plants ride on whatever surface is under them — a desk, a dresser — or sit on the floor.
+        const y = current.type === "plant" ? surfaceHeightAt(x, z, s.furniture, id) : current.position[1];
+        s.updateFurniture(id, { position: [x, y, z] }, { history: false });
       };
 
       const onUp = () => {

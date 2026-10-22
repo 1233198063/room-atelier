@@ -1,11 +1,48 @@
-import { Focus, Pause, PencilRuler, Play } from "lucide-react";
+import { CircleCheck, Focus, Lightbulb, Pause, PencilRuler, Play, TriangleAlert } from "lucide-react";
 import { toCm } from "../lib/geometry";
-import { useEditor } from "../store/editorStore";
+import { selectIssues, useEditor } from "../store/editorStore";
 
 const HINTS = {
   perspective: "Drag to orbit · Right-drag to pan · Scroll to zoom",
   top: "Drag to pan · Scroll to zoom",
 };
+
+/** Live layout-check summary; clicking it deselects so the room panel shows the full list. */
+function CheckChip() {
+  const issues = useEditor(selectIssues);
+  const select = useEditor((s) => s.select);
+  const warnings = issues.filter((i) => i.severity === "warning").length;
+  const tips = issues.length - warnings;
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+  return (
+    <button
+      type="button"
+      className={`chip check-chip${warnings ? " check-chip--warn" : ""}`}
+      onClick={() => select(null)}
+      title="Show the layout check"
+    >
+      {issues.length === 0 ? (
+        <>
+          <CircleCheck size={14} strokeWidth={1.9} /> Layout looks good
+        </>
+      ) : (
+        <>
+          {warnings > 0 && (
+            <span className="check-chip__part check-chip__part--warn">
+              <TriangleAlert size={14} strokeWidth={1.9} /> {plural(warnings, "warning")}
+            </span>
+          )}
+          {tips > 0 && (
+            <span className="check-chip__part">
+              <Lightbulb size={14} strokeWidth={1.9} /> {plural(tips, "tip")}
+            </span>
+          )}
+        </>
+      )}
+    </button>
+  );
+}
 
 /** HTML laid over the canvas: hints, camera controls, and the preview-mode placard. */
 export function StageOverlay() {
@@ -21,6 +58,11 @@ export function StageOverlay() {
 
   return (
     <div className="overlay">
+      {mode === "edit" && (
+        <div className="overlay__top">
+          <CheckChip />
+        </div>
+      )}
       {mode === "preview" && (
         <div className="placard">
           <span className="placard__eyebrow">Room Atelier · Preview</span>

@@ -137,4 +137,15 @@ describe("editor store", () => {
     const w = get().openings[0];
     expect(w.offset + w.width / 2).toBeLessThanOrEqual(2 + 1e-9);
   });
+
+  it("applies palettes and edits colors as undoable steps", () => {
+    get().applyPalette("japandi");
+    expect(get().palette.id).toBe("japandi");
+    get().setPaletteColors({ accent: "#123456" });
+    expect(get().palette).toMatchObject({ id: "custom", accent: "#123456", wall: "#ebe5da" });
+    get().undo();
+    expect(get().palette.id).toBe("japandi");
+    get().undo();
+    expect(get().palette.id).toBe("warm-oak");
+  });
 });

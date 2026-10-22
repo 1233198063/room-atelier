@@ -5,7 +5,7 @@ import { openingSpan, PLAN_CUT_HEIGHT, WALL_T, wallToWorld } from "../lib/openin
 import { useEditor } from "../store/editorStore";
 import type { Opening, Room } from "../types";
 import { ClippedBox, type CutHeights } from "./ClippedBox";
-import { ACCENT, ACCENT_SOFT, HIT_MATERIAL, INK_MUTED } from "./materials";
+import { ACCENT, ACCENT_SOFT, HIT_MATERIAL, INK_MUTED, WARN } from "./materials";
 import { useOpeningDrag } from "./useOpeningDrag";
 import { boxTransform, openingBounds, openingParts } from "./wallParts";
 
@@ -66,9 +66,11 @@ interface Props {
   room: Room;
   cut: RefObject<CutHeights>;
   selected: boolean;
+  /** Involved in a layout-check warning (e.g. a blocked door swing). */
+  flagged: boolean;
 }
 
-export const OpeningItem = memo(function OpeningItem({ opening: o, room, cut, selected }: Props) {
+export const OpeningItem = memo(function OpeningItem({ opening: o, room, cut, selected, flagged }: Props) {
   const editing = useEditor((s) => s.mode === "edit");
   const plan = useEditor((s) => s.view === "top");
   const gl = useThree((s) => s.gl);
@@ -108,14 +110,16 @@ export const OpeningItem = memo(function OpeningItem({ opening: o, room, cut, se
       {/* An invisible box filling the opening: the thing you actually click. */}
       <ClippedBox wall={o.wall} box={bounds} room={room} material={HIT_MATERIAL} cut={cut} interactive />
 
-      {editing && (selected || hovered) && (
+      {editing && (selected || hovered || flagged) && (
         <mesh position={outline.position} scale={outline.scale} raycast={noRaycast}>
           <boxGeometry args={[1, 1, 1]} />
           <meshBasicMaterial visible={false} />
-          <Edges color={selected ? ACCENT : ACCENT_SOFT} lineWidth={selected ? 1.6 : 1} />
+          <Edges color={selected ? ACCENT : flagged ? WARN : ACCENT_SOFT} lineWidth={selected || flagged ? 1.6 : 1} />
         </mesh>
       )}
-      {editing && o.type === "door" && <DoorSwing o={o} room={room} color={selected ? ACCENT : INK_MUTED} />}
+      {editing && o.type === "door" && (
+        <DoorSwing o={o} room={room} color={selected ? ACCENT : flagged ? WARN : INK_MUTED} />
+      )}
       {plan && o.type === "window" && <WindowSymbol o={o} room={room} color={selected ? ACCENT : "#5d86b3"} />}
     </group>
   );

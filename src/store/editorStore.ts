@@ -9,7 +9,9 @@ import {
   normalizeDeg,
   roundMm,
 } from "../lib/geometry";
+import { checkLayout, checkPalette, type Issue } from "../lib/layoutChecks";
 import { constrainOpening, findOpeningSpot, OPENING_CATALOG } from "../lib/openings";
+import { PALETTE_PRESETS } from "../lib/palettes";
 import { loadLayout } from "../lib/persistence";
 import { SAMPLE_LAYOUT } from "../lib/sampleLayout";
 import type {
@@ -20,6 +22,8 @@ import type {
   Layout,
   Opening,
   OpeningType,
+  Palette,
+  PaletteColor,
   Room,
   ViewMode,
   Wall,
@@ -38,6 +42,7 @@ export interface Snapshot {
   room: Room;
   furniture: Furniture[];
   openings: Opening[];
+  palette: Palette;
 }
 
 export type FurniturePatch = Partial<Pick<Furniture, "name" | "position" | "rotation">> & {
@@ -60,6 +65,7 @@ export interface EditorState {
   room: Room;
   furniture: Furniture[];
   openings: Opening[];
+  palette: Palette;
   /** Id of the selected furniture piece or opening (ids are unique across both). */
   selectedId: string | null;
 
@@ -79,7 +85,8 @@ export interface EditorState {
 
   setProjectName: (name: string) => void;
   setRoom: (patch: Partial<Room>, opts?: UpdateOptions) => void;
-  addFurniture: (type: FurnitureType) => string;
+  /** Add a piece at a free spot; `preset` overrides the catalog's default name and size. */
+  addFurniture: (type: FurnitureType, preset?: { name?: string; dimensions?: Dimensions }) => string;
   updateFurniture: (id: string, patch: FurniturePatch, opts?: UpdateOptions) => void;
   alignFurniture: (id: string, target: Wall | "centerX" | "centerZ") => void;
   removeFurniture: (id: string) => void;
@@ -92,6 +99,10 @@ export interface EditorState {
   /** Delete / duplicate whatever is selected, furniture or opening. */
   removeSelection: () => void;
   duplicateSelection: () => void;
+  /** Switch to one of PALETTE_PRESETS. */
+  applyPalette: (presetId: string) => void;
+  /** Change individual colors; the palette becomes "custom". */
+  setPaletteColors: (patch: Partial<Record<PaletteColor, string>>, opts?: UpdateOptions) => void;
   loadSample: () => void;
   select: (id: string | null) => void;
 
@@ -172,7 +183,12 @@ let lastCoalesce: { key: string; at: number } | null = null;
 const initial = initialLayout();
 
 export const useEditor = create<EditorState>()((set, get) => {
-  const snapshot = (): Snapshot => ({ room: get().room, furniture: get().furniture, openings: get().openings });
+  const snapshot = (): Snapshot => ({
+    room: get().room,
+    furniture: get().furniture,
+    openings: get().openings,
+    palette: get().palette,
+  });
 
   /** Push the current document onto the undo stack (call BEFORE mutating). */
   const record = (coalesceKey?: string): Partial<Pick<EditorState, "past" | "future">> => {
@@ -192,6 +208,7 @@ export const useEditor = create<EditorState>()((set, get) => {
       room: s.room,
       furniture: s.furniture,
       openings: s.openings,
+      palette: s.palette,
       selectedId: stillExists ? selectedId : null,
     };
   };
@@ -201,6 +218,7 @@ export const useEditor = create<EditorState>()((set, get) => {
     room: initial.room,
     furniture: initial.furniture,
     openings: initial.openings,
+    palette: initial.palette,
     selectedId: null,
 
     mode: "edit",
@@ -229,18 +247,19 @@ export const useEditor = create<EditorState>()((set, get) => {
       });
     },
 
-    addFurniture: (type) => {
+    addFurniture: (type, preset = {}) => {
       const { room, furniture } = get();
       const entry = CATALOG[type];
-      const [x, z] = findFreeSpot(entry.defaults, room, furniture);
+      const dimensions = { ...(preset.dimensions ?? entry.defaults) };
+      const [x, z] = findFreeSpot(dimensions, room, furniture);
       const piece = constrainFurniture(
         {
           id: makeId(),
           type,
-          name: uniqueName(entry.label, furniture),
+          name: uniqueName(preset.name ?? entry.label, furniture),
           position: [x, 0, z],
           rotation: 0,
-          dimensions: { ...entry.defaults },
+          dimensions,
         },
         room,
       );
@@ -367,6 +386,19 @@ export const useEditor = create<EditorState>()((set, get) => {
       else get().duplicateOpening(selectedId);
     },
 
+    applyPalette: (presetId) => {
+      const preset = PALETTE_PRESETS.find((p) => p.palette.id === presetId);
+      if (!preset || preset.palette === get().palette) return;
+      set({ ...record(), palette: preset.palette });
+    },
+
+    setPaletteColors: (patch, opts = {}) => {
+      const current = get().palette;
+      const next: Palette = { ...current, ...patch, id: "custom" };
+      if (JSON.stringify(next) === JSON.stringify(current)) return;
+      set({ ...(opts.history === false ? {} : record(opts.coalesceKey)), palette: next });
+    },
+
     loadSample: () => {
       set({
         ...record(),
@@ -374,6 +406,7 @@ export const useEditor = create<EditorState>()((set, get) => {
         room: SAMPLE_LAYOUT.room,
         furniture: SAMPLE_LAYOUT.furniture,
         openings: SAMPLE_LAYOUT.openings,
+        palette: SAMPLE_LAYOUT.palette,
         selectedId: null,
         cameraResetToken: get().cameraResetToken + 1,
       });
@@ -390,8 +423,10 @@ export const useEditor = create<EditorState>()((set, get) => {
       gestureStart = null;
       lastCoalesce = null;
       if (!start) return;
-      const { room, furniture, openings, past } = get();
-      if (start.room === room && start.furniture === furniture && start.openings === openings) return; // nothing moved
+      const { room, furniture, openings, palette, past } = get();
+      const unchanged =
+        start.room === room && start.furniture === furniture && start.openings === openings && start.palette === palette;
+      if (unchanged) return; // nothing moved
       set({ past: [...past, start].slice(-HISTORY_LIMIT), future: [] });
     },
 
@@ -424,7 +459,14 @@ export const useEditor = create<EditorState>()((set, get) => {
 
 /** Plain-data view of the document, as persisted. */
 export function selectLayout(s: EditorState): Layout {
-  return { version: 1, projectName: s.projectName, room: s.room, furniture: s.furniture, openings: s.openings };
+  return {
+    version: 1,
+    projectName: s.projectName,
+    room: s.room,
+    furniture: s.furniture,
+    openings: s.openings,
+    palette: s.palette,
+  };
 }
 
 export const selectSelected = (s: EditorState) =>
@@ -432,3 +474,19 @@ export const selectSelected = (s: EditorState) =>
 
 export const selectSelectedOpening = (s: EditorState) =>
   s.openings.find((o) => o.id === s.selectedId) ?? null;
+
+/**
+ * Layout check results for the current document. Memoized on the document's
+ * object identities, so every component can call this freely and the rules
+ * only re-run when something actually changed (e.g. once per drag step).
+ */
+let issueCache: { snapshot: Snapshot; issues: Issue[] } | null = null;
+export function selectIssues(s: EditorState): Issue[] {
+  const c = issueCache?.snapshot;
+  if (c && c.room === s.room && c.furniture === s.furniture && c.openings === s.openings && c.palette === s.palette) {
+    return issueCache!.issues;
+  }
+  const issues = [...checkLayout(s.room, s.furniture, s.openings), ...checkPalette(s.palette, s.room, s.openings)];
+  issueCache = { snapshot: { room: s.room, furniture: s.furniture, openings: s.openings, palette: s.palette }, issues };
+  return issues;
+}

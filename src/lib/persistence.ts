@@ -1,7 +1,8 @@
-import type { Furniture, Layout, Opening, Room, Wall } from "../types";
+import type { Furniture, Layout, Opening, Palette, Room, Wall } from "../types";
 import { CATALOG, ROOM_LIMITS } from "./catalog";
 import { clamp, normalizeDeg } from "./geometry";
 import { OPENING_CATALOG, WALLS } from "./openings";
+import { DEFAULT_PALETTE, isHexColor, PALETTE_COLORS } from "./palettes";
 
 export const STORAGE_KEY = "room-atelier:layout:v1";
 
@@ -63,6 +64,17 @@ function parseOpening(raw: unknown): Opening | null {
   };
 }
 
+/** Keep every valid "#rrggbb" color; fall back to the default for anything missing or malformed. */
+function parsePalette(raw: unknown): Palette {
+  if (!isObject(raw)) return DEFAULT_PALETTE;
+  const palette: Palette = { ...DEFAULT_PALETTE, id: typeof raw.id === "string" ? raw.id : "custom" };
+  for (const { key } of PALETTE_COLORS) {
+    const value = raw[key];
+    if (isHexColor(value)) palette[key] = value.toLowerCase();
+  }
+  return palette;
+}
+
 /**
  * Validate untrusted JSON (localStorage can be edited by hand, or written by an
  * older version of the app). Returns null if the payload is unusable; drops
@@ -79,7 +91,7 @@ export function parseLayout(raw: unknown): Layout | null {
     : [];
   const projectName =
     typeof raw.projectName === "string" && raw.projectName.trim() ? raw.projectName : "Untitled room";
-  return { version: 1, projectName, room, furniture, openings };
+  return { version: 1, projectName, room, furniture, openings, palette: parsePalette(raw.palette) };
 }
 
 function storage(): Storage | null {

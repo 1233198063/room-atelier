@@ -14,11 +14,12 @@ import {
   Trash2,
   type LucideIcon,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { CATALOG, ROOM_LIMITS } from "../lib/catalog";
 import { floorCoverage, fromCm, toCm, wallClearances } from "../lib/geometry";
 import { OPENING_CATALOG, openingClearances, runsAlongX, wallEnds, wallLength } from "../lib/openings";
 import {
+  selectIssues,
   selectSelected,
   selectSelectedOpening,
   useEditor,
@@ -26,7 +27,9 @@ import {
   type OpeningPatch,
 } from "../store/editorStore";
 import type { Furniture, Opening, Room, Wall } from "../types";
+import { IssueList } from "./IssueList";
 import { PlanMinimap } from "./PlanMinimap";
+import { StyleSection } from "./StyleSection";
 import { FurnitureIcon } from "./ui/FurnitureIcon";
 import { NumberField, type ChangeMeta } from "./ui/NumberField";
 import { Segmented } from "./ui/Segmented";
@@ -99,6 +102,8 @@ function FurnitureInspector({ f }: { f: Furniture }) {
           <span className="inspector-head__type">{entry.description}</span>
         </div>
       </section>
+
+      <ItemIssues id={f.id} />
 
       <section className="section">
         <h3 className="section__title">Position</h3>
@@ -306,6 +311,8 @@ function OpeningInspector({ o }: { o: Opening }) {
         </div>
       </section>
 
+      <ItemIssues id={o.id} />
+
       <section className="section">
         <h3 className="section__title">Wall</h3>
         <div className="segmented-block">
@@ -410,6 +417,19 @@ const formatCm = (m: number) => {
   return Number.isInteger(cm) ? `${cm}` : cm.toFixed(1);
 };
 
+/** Layout-check results that involve one item; renders nothing when it's all clear. */
+function ItemIssues({ id }: { id: string }) {
+  const issues = useEditor(selectIssues);
+  const mine = useMemo(() => issues.filter((i) => i.targets.includes(id)), [issues, id]);
+  if (mine.length === 0) return null;
+  return (
+    <section className="section">
+      <h3 className="section__title">Layout check</h3>
+      <IssueList issues={mine} />
+    </section>
+  );
+}
+
 // ── Room ─────────────────────────────────────────────────────────────────
 
 function RoomInspector() {
@@ -428,6 +448,7 @@ function RoomInspector() {
     onScrubEnd: endGesture,
   });
 
+  const issues = useEditor(selectIssues);
   const area = room.width * room.depth;
   const coverage = floorCoverage(furniture, room);
 
@@ -436,6 +457,13 @@ function RoomInspector() {
       <section className="section">
         <h2 className="inspector-title">Room</h2>
         <p className="inspector-sub">Nothing selected — edit the room itself, or click a piece of furniture.</p>
+      </section>
+
+      <section className="section">
+        <h3 className="section__title">
+          Layout check {issues.length > 0 && <span className="count">{issues.length}</span>}
+        </h3>
+        <IssueList issues={issues} emptyText="No problems found. Nice layout." />
       </section>
 
       <section className="section">
@@ -460,6 +488,8 @@ function RoomInspector() {
           </div>
         </dl>
       </section>
+
+      <StyleSection />
 
       <section className="section">
         <h3 className="section__title">Plan</h3>

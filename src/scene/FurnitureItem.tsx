@@ -4,12 +4,13 @@ import { memo, useState, type ComponentType } from "react";
 import { degToRad } from "../lib/geometry";
 import { useEditor } from "../store/editorStore";
 import type { Dimensions, Furniture, FurnitureType } from "../types";
-import { ACCENT, ACCENT_SOFT } from "./materials";
+import { ACCENT, ACCENT_SOFT, WARN } from "./materials";
 import { Bed } from "./models/Bed";
 import { Cabinet } from "./models/Cabinet";
 import { Chair } from "./models/Chair";
 import { Desk } from "./models/Desk";
 import { Dresser } from "./models/Dresser";
+import { Plant } from "./models/Plant";
 import { useFurnitureDrag } from "./useFurnitureDrag";
 
 const MODELS: Record<FurnitureType, ComponentType<Dimensions>> = {
@@ -18,6 +19,7 @@ const MODELS: Record<FurnitureType, ComponentType<Dimensions>> = {
   chair: Chair,
   cabinet: Cabinet,
   dresser: Dresser,
+  plant: Plant,
 };
 
 const noRaycast = () => null;
@@ -25,6 +27,8 @@ const noRaycast = () => null;
 interface Props {
   furniture: Furniture;
   selected: boolean;
+  /** Involved in a layout-check warning. */
+  flagged: boolean;
 }
 
 /**
@@ -32,7 +36,7 @@ interface Props {
  * data: position → group position, rotation (degrees) → radians around Y,
  * dimensions → the parametric model.
  */
-export const FurnitureItem = memo(function FurnitureItem({ furniture: f, selected }: Props) {
+export const FurnitureItem = memo(function FurnitureItem({ furniture: f, selected, flagged }: Props) {
   const editing = useEditor((s) => s.mode === "edit");
   const gl = useThree((s) => s.gl);
   const [hovered, setHovered] = useState(false);
@@ -40,7 +44,8 @@ export const FurnitureItem = memo(function FurnitureItem({ furniture: f, selecte
   const Model = MODELS[f.type];
   const { width: w, height: h, depth: d } = f.dimensions;
 
-  const outline = editing && (selected || hovered);
+  const outline = editing && (selected || hovered || flagged);
+  const outlineColor = selected ? ACCENT : flagged ? WARN : ACCENT_SOFT;
 
   return (
     <group
@@ -64,7 +69,7 @@ export const FurnitureItem = memo(function FurnitureItem({ furniture: f, selecte
         <mesh position={[0, h / 2, 0]} raycast={noRaycast}>
           <boxGeometry args={[w + 0.01, h + 0.01, d + 0.01]} />
           <meshBasicMaterial visible={false} />
-          <Edges color={selected ? ACCENT : ACCENT_SOFT} lineWidth={selected ? 1.6 : 1} />
+          <Edges color={outlineColor} lineWidth={selected || flagged ? 1.6 : 1} />
         </mesh>
       )}
 

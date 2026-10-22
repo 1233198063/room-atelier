@@ -67,6 +67,7 @@ export function PlanMinimap() {
   const room = useEditor((s) => s.room);
   const furniture = useEditor((s) => s.furniture);
   const openings = useEditor((s) => s.openings);
+  const wood = useEditor((s) => s.palette.wood);
   const selectedId = useEditor((s) => s.selectedId);
   const select = useEditor((s) => s.select);
   const pad = 14;
@@ -87,7 +88,7 @@ export function PlanMinimap() {
         const selected = f.id === selectedId;
         return (
           <g key={f.id} className={`minimap__piece${selected ? " is-selected" : ""}`} onClick={() => select(f.id)}>
-            <polygon points={pts(c)} />
+            <polygon points={pts(c)} style={selected ? undefined : { fill: wood }} />
             {/* Front edge (local +Z), so orientation is readable at a glance */}
             <polyline points={pts([c[2], c[3]])} className="minimap__front" />
           </g>

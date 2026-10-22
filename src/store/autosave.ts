@@ -23,6 +23,7 @@ export function startAutosave(): () => void {
       state.room !== prev.room ||
       state.furniture !== prev.furniture ||
       state.openings !== prev.openings ||
+      state.palette !== prev.palette ||
       state.projectName !== prev.projectName;
     if (!docChanged) return;
     if (state.saveStatus !== "unsaved") useEditor.setState({ saveStatus: "unsaved" });

@@ -18,7 +18,7 @@
  * position reads like a tape-measure: "120 cm from the left wall".
  */
 
-export type FurnitureType = "bed" | "desk" | "chair" | "cabinet" | "dresser";
+export type FurnitureType = "bed" | "desk" | "chair" | "cabinet" | "dresser" | "plant";
 
 export type Vec3 = [number, number, number];
 
@@ -73,6 +73,29 @@ export interface Opening {
   hinge: "start" | "end";
 }
 
+/**
+ * The room's color scheme. Every value is a "#rrggbb" hex color; each one
+ * drives a family of materials in the scene (all wood frames, all handles…).
+ */
+export interface Palette {
+  /** Preset this palette came from, or "custom" once any color is edited. */
+  id: string;
+  wall: string;
+  floor: string;
+  /** Main furniture wood: tops, fronts, frames. */
+  wood: string;
+  /** Carcasses, legs and plinths. */
+  woodDark: string;
+  /** Bedding and cushions. */
+  fabric: string;
+  /** The 10% color: throws, small soft accents. */
+  accent: string;
+  /** Handles and hardware. */
+  metal: string;
+}
+
+export type PaletteColor = Exclude<keyof Palette, "id">;
+
 /** What we persist to localStorage. Versioned so the format can evolve. */
 export interface Layout {
   version: 1;
@@ -81,6 +104,8 @@ export interface Layout {
   furniture: Furniture[];
   /** Added after the first release; older saves without it load with no openings. */
   openings: Opening[];
+  /** Added later still; older saves load with the default palette. */
+  palette: Palette;
 }
 
 export type ViewMode = "perspective" | "top";

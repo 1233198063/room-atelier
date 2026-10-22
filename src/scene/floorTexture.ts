@@ -15,8 +15,12 @@ function mulberry32(seed: number) {
 }
 
 /**
- * Paint light-oak floorboards onto a canvas and use it as a texture.
+ * Paint floorboards onto a canvas and use it as a texture.
  * Six 20 cm boards per 1.2 m tile, with staggered joints and faint grain.
+ *
+ * The boards are drawn in near-white: only the *variation* lives in the
+ * texture. Three.js multiplies a texture by the material's color, so the
+ * palette's floor color tints it — one texture serves every palette.
  */
 export function createFloorTexture(): CanvasTexture {
   const size = 1024;
@@ -37,13 +41,13 @@ export function createFloorTexture(): CanvasTexture {
       let len = size * (0.4 + rand() * 0.45);
       if (size - run - len < size * 0.2) len = size - run;
       const x = offset + run;
-      const fill = `hsl(${33 + rand() * 4}, ${38 + rand() * 10}%, ${82 + rand() * 6}%)`;
+      const fill = `hsl(30, ${6 + rand() * 6}%, ${88 + rand() * 10}%)`;
       const grain = Array.from({ length: 7 }, () => [6 + rand() * (boardPx - 12), rand() * 6 - 3, rand() * 6 - 3]);
 
       for (const px of [x, x - size]) {
         ctx.fillStyle = fill;
         ctx.fillRect(px, y, len, boardPx);
-        ctx.strokeStyle = "rgba(120, 85, 45, 0.07)";
+        ctx.strokeStyle = "rgba(90, 70, 50, 0.08)";
         ctx.lineWidth = 1.5;
         for (const [gy, a, b] of grain) {
           ctx.beginPath();
@@ -51,13 +55,13 @@ export function createFloorTexture(): CanvasTexture {
           ctx.bezierCurveTo(px + len * 0.3, y + gy + a, px + len * 0.7, y + gy + b, px + len, y + gy);
           ctx.stroke();
         }
-        ctx.fillStyle = "rgba(110, 80, 50, 0.22)"; // end joint
+        ctx.fillStyle = "rgba(80, 60, 40, 0.22)"; // end joint
         ctx.fillRect(px, y, 2, boardPx);
       }
       run += len;
     }
     // long seam between rows
-    ctx.fillStyle = "rgba(110, 80, 50, 0.25)";
+    ctx.fillStyle = "rgba(80, 60, 40, 0.25)";
     ctx.fillRect(0, y, size, 2);
   }
 

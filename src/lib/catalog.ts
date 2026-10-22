@@ -51,9 +51,33 @@ export const CATALOG: Record<FurnitureType, CatalogEntry> = {
     min: { width: 0.5, depth: 0.35, height: 0.5 },
     max: { width: 2.4, depth: 0.7, height: 1.3 },
   },
+  plant: {
+    type: "plant",
+    label: "Plant",
+    description: "Potted plant — on the floor or on a surface",
+    defaults: { width: 0.5, depth: 0.5, height: 1.2 },
+    min: { width: 0.12, depth: 0.12, height: 0.12 },
+    max: { width: 1.6, depth: 1.6, height: 2.6 },
+  },
 };
 
 export const FURNITURE_TYPES = Object.keys(CATALOG) as FurnitureType[];
+
+/** Library cards for the "Plants" section: one type, two starting sizes. */
+export const PLANT_PRESETS: { key: string; label: string; dimensions: Dimensions }[] = [
+  { key: "floor", label: "Floor plant", dimensions: CATALOG.plant.defaults },
+  { key: "small", label: "Small plant", dimensions: { width: 0.22, depth: 0.22, height: 0.32 } },
+];
+
+/**
+ * Furniture whose top you can put a small plant on. Dragging a plant over one
+ * of these (if it's no taller than SURFACE_MAX_HEIGHT) lifts it onto the top.
+ */
+export const SURFACE_TYPES: FurnitureType[] = ["desk", "dresser", "cabinet"];
+export const SURFACE_MAX_HEIGHT = 1.4;
+
+/** Pieces people routinely shift around; layout checks don't treat them as fixed obstacles. */
+export const MOVABLE_TYPES: FurnitureType[] = ["chair", "plant"];
 
 export const ROOM_LIMITS = {
   min: { width: 1.5, depth: 1.5, height: 2.0 },

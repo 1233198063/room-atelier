@@ -1,4 +1,6 @@
 import type { Dimensions, Furniture, Room, Wall } from "../types";
+import { SURFACE_MAX_HEIGHT, SURFACE_TYPES } from "./catalog";
+import { pointInPolygon, type Pt } from "./polygon";
 
 // ── Units ────────────────────────────────────────────────────────────────
 
@@ -49,6 +51,36 @@ export function footprintBounds(f: Pick<Furniture, "position" | "dimensions" | "
   const { hx, hz } = footprintHalfExtents(f.dimensions, f.rotation);
   const [x, , z] = f.position;
   return { minX: x - hx, maxX: x + hx, minZ: z - hz, maxZ: z + hz };
+}
+
+/**
+ * The four floor corners of a (rotated) footprint, in world x/z. Uses the same
+ * rotation Three.js applies around +Y: x' = x·cos + z·sin, z' = −x·sin + z·cos.
+ */
+export function footprintCorners(f: Pick<Furniture, "position" | "dimensions" | "rotation">): Pt[] {
+  const { width: w, depth: d } = f.dimensions;
+  const r = degToRad(f.rotation);
+  const cos = Math.cos(r);
+  const sin = Math.sin(r);
+  const [px, , pz] = f.position;
+  const local: Pt[] = [
+    [-w / 2, -d / 2],
+    [w / 2, -d / 2],
+    [w / 2, d / 2],
+    [-w / 2, d / 2],
+  ];
+  return local.map(([x, z]) => [px + x * cos + z * sin, pz - x * sin + z * cos]);
+}
+
+/** Height of the highest furniture top (desk, dresser…) under a floor point — 0 if it's bare floor. */
+export function surfaceHeightAt(x: number, z: number, furniture: Furniture[], excludeId?: string): number {
+  let height = 0;
+  for (const f of furniture) {
+    if (f.id === excludeId || !SURFACE_TYPES.includes(f.type)) continue;
+    const top = f.position[1] + f.dimensions.height;
+    if (top <= SURFACE_MAX_HEIGHT && pointInPolygon([x, z], footprintCorners(f))) height = Math.max(height, top);
+  }
+  return height;
 }
 
 /** Clearance from each side of the footprint to the corresponding wall. */

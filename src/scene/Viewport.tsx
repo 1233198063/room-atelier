@@ -1,12 +1,15 @@
 import { Grid } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
+import { useLayoutEffect } from "react";
 import { NeutralToneMapping } from "three";
 import { useEditor } from "../store/editorStore";
 import { CameraRig } from "./CameraRig";
 import { FurnitureItem } from "./FurnitureItem";
 import { Lights } from "./Lights";
+import { applyPalette } from "./materials";
 import { RoomDimensions, SelectionMeasurements } from "./Measurements";
 import { RoomShell } from "./RoomShell";
+import { useFlaggedIds } from "./useFlaggedIds";
 
 function RoomGrid() {
   const room = useEditor((s) => s.room);
@@ -26,13 +29,21 @@ function RoomGrid() {
   );
 }
 
+/** Keeps the shared materials in step with the palette in the store. */
+function PaletteSync() {
+  const palette = useEditor((s) => s.palette);
+  useLayoutEffect(() => applyPalette(palette), [palette]);
+  return null;
+}
+
 function Furniture() {
   const furniture = useEditor((s) => s.furniture);
   const selectedId = useEditor((s) => s.selectedId);
+  const flagged = useFlaggedIds();
   return (
     <>
       {furniture.map((f) => (
-        <FurnitureItem key={f.id} furniture={f} selected={f.id === selectedId} />
+        <FurnitureItem key={f.id} furniture={f} selected={f.id === selectedId} flagged={flagged.has(f.id)} />
       ))}
     </>
   );
@@ -57,6 +68,7 @@ export function Viewport() {
         if (e.button === 0) select(null);
       }}
     >
+      <PaletteSync />
       <Lights />
       <CameraRig />
       <RoomShell />
