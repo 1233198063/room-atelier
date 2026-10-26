@@ -1101,6 +1101,49 @@ body.is-scrubbing * {
   text-transform: uppercase;
 }
 
+.furniture-colors { display: grid; gap: 7px; }
+.plant-placement select { width: 100%; padding: 8px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface); text-overflow: ellipsis; }
+.furniture-color-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 86px;
+  grid-template-rows: auto auto;
+  column-gap: 9px;
+  align-items: center;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+}
+.furniture-color-row.is-custom { border-color: var(--line-strong); }
+.furniture-color-row__swatch {
+  grid-row: 1 / 3;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.furniture-color-row__swatch::-webkit-color-swatch-wrapper { padding: 0; }
+.furniture-color-row__swatch::-webkit-color-swatch { border: 1px solid var(--line-strong); border-radius: 5px; }
+.furniture-color-row__swatch::-moz-color-swatch { border: 1px solid var(--line-strong); border-radius: 5px; }
+.furniture-color-row__label { grid-column: 2; font-size: 12px; font-weight: 500; cursor: pointer; }
+.furniture-color-row__status { grid-column: 2; grid-row: 2; color: var(--text-3); font-size: 10px; }
+.furniture-color-row__hex {
+  grid-column: 3;
+  grid-row: 1 / 3;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--surface-sunk);
+  padding: 6px;
+  font: 11px var(--font-mono);
+  text-transform: uppercase;
+}
+.furniture-color-row__hex[aria-invalid="true"] { border-color: var(--danger); }
+.furniture-color-row__error { grid-column: 1 / -1; color: var(--danger); font-size: 10px; padding-top: 5px; }
+
 /* Layout check */
 
 .issues {
@@ -1498,4 +1541,54 @@ body.is-scrubbing * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+/* Multi-room project controls */
+.room-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; max-height: 220px; overflow: auto; }
+.room-list__item { width: 100%; display: flex; gap: 10px; align-items: center; text-align: left; padding: 10px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); }
+.room-list__item:hover { background: var(--surface-hover); }
+.room-list__item.is-selected { background: var(--accent-wash); border-color: var(--accent); color: var(--accent-ink); }
+.room-list__number { font: 11px var(--font-mono); color: var(--text-3); }
+.room-list__text { flex: 1; min-width: 0; display: grid; gap: 3px; }
+.room-list__text strong { font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-list__text small { color: var(--text-2); font-size: 10px; }
+.room-manager .section__title .link-btn { margin-left: auto; }
+.room-template { display: flex; width: 100%; align-items: center; gap: 9px; padding: 8px; margin-top: 12px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface-sunk); text-align: left; }
+.room-template:hover { background: var(--surface-hover); }
+.room-template img { width: 52px; height: 58px; object-fit: cover; border-radius: 5px; }
+.room-template span { display: grid; gap: 4px; flex: 1; min-width: 0; }
+.room-template strong { font-size: 11px; line-height: 1.5; font-weight: 600; }
+.room-template small { color: var(--text-2); font-size: 9px; }
+.room-template svg { flex: none; }
+.room-viewbar { position: absolute; top: 14px; left: 16px; right: 16px; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.room-viewbar select { max-width: 180px; min-width: 80px; height: 34px; border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--surface); padding: 0 9px; text-overflow: ellipsis; }
+.room-viewbar .segmented { background: var(--surface); box-shadow: var(--shadow-1); }
+.overlay__top { top: 60px; }
+.placard { top: 78px; }
+.room-breadcrumb { width: 100%; border: 0; border-bottom: 1px solid var(--line); padding: 12px 16px; background: var(--surface-sunk); color: var(--accent-ink); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.room-label { max-width: 180px; overflow: hidden; text-overflow: ellipsis; padding: 4px 9px; border-radius: 6px; background: rgba(251,249,245,.9); border: 1px solid var(--line-strong); color: var(--text-2); font-size: 11px; white-space: nowrap; user-select: none; }
+.room-label.is-active { border-color: var(--accent); color: var(--accent-ink); }
+.assembly-plan { width: 100%; height: 180px; display: block; background: var(--surface-sunk); border: 1px solid var(--line); border-radius: var(--radius); touch-action: none; user-select: none; }
+.assembly-plan__room { cursor: grab; }
+.assembly-plan__room:active { cursor: grabbing; }
+.assembly-plan__room polygon { stroke: var(--wood-deep); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.assembly-plan__room.is-active polygon { stroke: var(--accent); stroke-width: 2.5px; }
+.assembly-plan__room text { font-family: var(--font-ui); font-size: .22px; fill: var(--text); pointer-events: none; }
+.assembly-plan__room:focus-visible { outline: none; }
+.assembly-plan__room:focus-visible polygon { stroke: var(--accent); stroke-width: 4px; }
+.assembly-warning { font-size: 11px; color: var(--warn); background: var(--warn-wash); padding: 8px; border-radius: 6px; }
+.attach-room { margin-top: 12px; display: grid; gap: 8px; }
+.attach-room label { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--text-2); }
+.attach-room select { min-width: 0; flex: 1; padding: 5px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
+.attach-room__sides { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+.attach-room__sides .btn { padding: 6px 4px; gap: 3px; font-size: 10px; justify-content: center; }
+.unit-tag { font: 10px var(--font-mono); color: var(--text-3); }
+@media (min-width: 901px) and (max-width: 1100px) {
+  .room-viewbar select { max-width: 110px; }
+  .room-viewbar .segmented__text { display: none; }
+}
+@media (max-width: 480px) {
+  .room-viewbar { left: 10px; right: 10px; }
+  .room-viewbar select { max-width: 150px; }
+  .placard { top: 78px; }
 }

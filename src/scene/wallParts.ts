@@ -45,20 +45,20 @@ export function openingBounds(o: Opening): WallBox {
 }
 
 /** Frame, glass, leaf and hardware for one opening, as boxes in wall-local coordinates. */
-export function openingParts(o: Opening): OpeningPart[] {
+export function openingParts(o: Opening, materials = MATERIALS): OpeningPart[] {
   const [a0, a1] = openingSpan(o);
   const y0 = o.elevation;
   const y1 = o.elevation + o.height;
 
   if (o.type === "window") {
     const f = 0.05; // frame member width
-    const frame = { t0: -0.07, t1: -0.03, material: MATERIALS.oak };
+    const frame = { t0: -0.07, t1: -0.03, material: materials.oak };
     const parts: OpeningPart[] = [
       { a0, a1: a0 + f, y0, y1, ...frame },
       { a0: a1 - f, a1, y0, y1, ...frame },
       { a0: a0 + f, a1: a1 - f, y0: y1 - f, y1, ...frame },
       { a0: a0 + f, a1: a1 - f, y0, y1: y0 + f, ...frame },
-      { a0: a0 + f, a1: a1 - f, y0: y0 + f, y1: y1 - f, t0: -0.053, t1: -0.047, material: MATERIALS.glass },
+      { a0: a0 + f, a1: a1 - f, y0: y0 + f, y1: y1 - f, t0: -0.053, t1: -0.047, material: materials.glass },
     ];
     if (o.width > 0.9) {
       const mid = (a0 + a1) / 2;
@@ -66,14 +66,14 @@ export function openingParts(o: Opening): OpeningPart[] {
     }
     // Interior sill board, sticking a few cm out into the room.
     if (y0 > 0.05) {
-      parts.push({ a0: a0 - 0.04, a1: a1 + 0.04, y0: y0 - 0.03, y1: y0, t0: -0.04, t1: 0.05, material: MATERIALS.oak });
+      parts.push({ a0: a0 - 0.04, a1: a1 + 0.04, y0: y0 - 0.03, y1: y0, t0: -0.04, t1: 0.05, material: materials.oak });
     }
     return parts;
   }
 
   // Door: casing lines the opening, the leaf sits closed near the interior face.
   const j = 0.045;
-  const casing = { t0: -WALL_T, t1: 0.012, material: MATERIALS.trim };
+  const casing = { t0: -WALL_T, t1: 0.012, material: materials.trim };
   const handleA = o.hinge === "start" ? a1 - j - 0.08 : a0 + j + 0.08;
   return [
     { a0, a1: a0 + j, y0: 0, y1, ...casing },
@@ -86,7 +86,7 @@ export function openingParts(o: Opening): OpeningPart[] {
       y1: y1 - j,
       t0: -0.05,
       t1: -0.01,
-      material: MATERIALS.oak,
+      material: materials.oak,
       hideWhenCut: true,
     },
     {
@@ -96,7 +96,7 @@ export function openingParts(o: Opening): OpeningPart[] {
       y1: 1.02,
       t0: -0.01,
       t1: 0.035,
-      material: MATERIALS.brass,
+      material: materials.brass,
       hideWhenCut: true,
     },
   ];

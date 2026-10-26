@@ -1,7 +1,7 @@
 import { Check, Sparkles } from "lucide-react";
 import { useMemo } from "react";
 import { PALETTE_COLORS, PALETTE_PRESETS, suggestPalettes } from "../lib/palettes";
-import { useEditor } from "../store/editorStore";
+import { selectActiveRoom, useEditor } from "../store/editorStore";
 
 /**
  * Color scheme: curated presets (with suggestions for this particular room)
@@ -9,9 +9,9 @@ import { useEditor } from "../store/editorStore";
  * with the layout, like any other edit.
  */
 export function StyleSection() {
-  const palette = useEditor((s) => s.palette);
-  const room = useEditor((s) => s.room);
-  const openings = useEditor((s) => s.openings);
+  const palette = useEditor((s) => selectActiveRoom(s).palette);
+  const room = useEditor((s) => selectActiveRoom(s).room);
+  const openings = useEditor((s) => selectActiveRoom(s).openings);
   const applyPalette = useEditor((s) => s.applyPalette);
   const setColors = useEditor((s) => s.setPaletteColors);
 

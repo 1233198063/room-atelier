@@ -1,9 +1,10 @@
 import type { Dimensions } from "../../types";
-import { MATERIALS as M } from "../materials";
+import { useMaterials } from "../RoomContext";
 import { Box } from "./Box";
 
 /** Headboard at local −Z (the "back"), foot of the bed toward +Z. */
 export function Bed({ width: w, depth: d, height: h }: Dimensions) {
+  const M = useMaterials();
   const plinthH = 0.06;
   const baseH = Math.min(0.28, h * 0.3);
   const mattressH = Math.min(0.22, Math.max(0.1, h * 0.25));

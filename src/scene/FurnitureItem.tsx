@@ -1,7 +1,7 @@
 import { Edges } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { memo, useState, type ComponentType } from "react";
-import { degToRad } from "../lib/geometry";
+import { degToRad, furnitureSurfaceHeight } from "../lib/geometry";
 import { useEditor } from "../store/editorStore";
 import type { Dimensions, Furniture, FurnitureType } from "../types";
 import { ACCENT, ACCENT_SOFT, WARN } from "./materials";
@@ -12,8 +12,21 @@ import { Desk } from "./models/Desk";
 import { Dresser } from "./models/Dresser";
 import { Plant } from "./models/Plant";
 import { useFurnitureDrag } from "./useFurnitureDrag";
+import { FurnitureMaterialProvider } from "./RoomContext";
+import { Bookcase } from "./models/Bookcase";
+import { Worktable } from "./models/Worktable";
+import { Armchair, Ottoman } from "./models/Armchair";
+import { Rug } from "./models/Rug";
+import { Curtains } from "./models/Curtains";
+import { ScreenLabel } from "./ScreenLabel";
 
 const MODELS: Record<FurnitureType, ComponentType<Dimensions>> = {
+  bookcase: Bookcase,
+  worktable: Worktable,
+  armchair: Armchair,
+  ottoman: Ottoman,
+  rug: Rug,
+  curtains: Curtains,
   bed: Bed,
   desk: Desk,
   chair: Chair,
@@ -38,14 +51,15 @@ interface Props {
  */
 export const FurnitureItem = memo(function FurnitureItem({ furniture: f, selected, flagged }: Props) {
   const editing = useEditor((s) => s.mode === "edit");
+  const dropTarget = useEditor((s) => s.plantDropTargetId === f.id);
   const gl = useThree((s) => s.gl);
   const [hovered, setHovered] = useState(false);
   const onPointerDown = useFurnitureDrag(f.id);
   const Model = MODELS[f.type];
   const { width: w, height: h, depth: d } = f.dimensions;
 
-  const outline = editing && (selected || hovered || flagged);
-  const outlineColor = selected ? ACCENT : flagged ? WARN : ACCENT_SOFT;
+  const outline = editing && (selected || hovered || flagged || dropTarget);
+  const outlineColor = dropTarget ? "#4f7a4a" : selected ? ACCENT : flagged ? WARN : ACCENT_SOFT;
 
   return (
     <group
@@ -63,7 +77,18 @@ export const FurnitureItem = memo(function FurnitureItem({ furniture: f, selecte
         if (gl.domElement.style.cursor === "grab") gl.domElement.style.cursor = "";
       }}
     >
-      <Model {...f.dimensions} />
+      <FurnitureMaterialProvider colors={f.colors}>
+        <Model {...f.dimensions} />
+      </FurnitureMaterialProvider>
+
+      {editing && dropTarget && <>
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, furnitureSurfaceHeight(f) - f.position[1] + 0.003, 0]} raycast={noRaycast}>
+          <planeGeometry args={[w, d]} />
+          <meshBasicMaterial color="#4f7a4a" transparent opacity={0.25} depthWrite={false} />
+        </mesh>
+        <ScreenLabel position={[f.position[0], furnitureSurfaceHeight(f) + 0.08, f.position[2]]}
+          text={`Place on ${f.name}`} className="dim-label" />
+      </>}
 
       {outline && (
         <mesh position={[0, h / 2, 0]} raycast={noRaycast}>
@@ -74,8 +99,8 @@ export const FurnitureItem = memo(function FurnitureItem({ furniture: f, selecte
       )}
 
       {editing && selected && (
-        // Footprint highlight, pinned to the floor even if the piece is elevated.
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -f.position[1] + 0.004, 0]} raycast={noRaycast}>
+        // A plant's footprint follows its support; other pieces keep the floor reference.
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, (f.type === "plant" ? 0 : -f.position[1]) + 0.004, 0]} raycast={noRaycast}>
           <planeGeometry args={[w, d]} />
           <meshBasicMaterial color={ACCENT} transparent opacity={0.14} depthWrite={false} />
         </mesh>

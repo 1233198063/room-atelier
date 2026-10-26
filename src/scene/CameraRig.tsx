@@ -2,16 +2,16 @@ import { OrbitControls, OrthographicCamera, PerspectiveCamera } from "@react-thr
 import { useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, type ComponentRef } from "react";
 import { MOUSE, type OrthographicCamera as OrthoCam } from "three";
-import { useEditor } from "../store/editorStore";
-import type { Room } from "../types";
+import { selectSceneBounds, useEditor } from "../store/editorStore";
+
 
 type P3 = [number, number, number];
 type Size = { width: number; height: number };
 
 /** Where each camera sits when the view is (re)framed. */
-function framing(view: "perspective" | "top", room: Room, size: Size, labelMargin = 1) {
-  const cx = room.width / 2;
-  const cz = room.depth / 2;
+function framing(view: "perspective" | "top", room: ReturnType<typeof selectSceneBounds>, size: Size, labelMargin = 1) {
+  const cx = (room.minX + room.maxX) / 2;
+  const cz = (room.minZ + room.maxZ) / 2;
   if (view === "top") {
     // Fit the whole room plus a margin for the dimension labels.
     const margin = 1.6;
@@ -56,14 +56,15 @@ export function CameraRig() {
 
   // The pose a freshly mounted camera starts in. Recomputed only when the view
   // switches — following every room/size change would yank the camera mid-edit.
-  const initial = useMemo(() => framing(view, useEditor.getState().room, get().size), [view, get]);
+  const initial = useMemo(() => framing(view, selectSceneBounds(useEditor.getState()), get().size), [view, get]);
 
   // "Frame room" (button or F key): snap back to the default framing.
   useEffect(() => {
     const c = controls.current;
     if (!c || resetToken === 0) return;
     const { camera, size } = get();
-    const { room, mode } = useEditor.getState();
+    const { mode } = useEditor.getState();
+    const room = selectSceneBounds(useEditor.getState());
     const f = framing(view, room, size, mode === "preview" ? 0 : 1);
     camera.position.set(...f.position);
     c.target.set(...f.target);
@@ -78,7 +79,7 @@ export function CameraRig() {
   return (
     <>
       {view === "perspective" ? (
-        <PerspectiveCamera makeDefault position={initial.position} fov={PERSPECTIVE_FOV} near={0.05} far={200} />
+        <PerspectiveCamera makeDefault position={initial.position} fov={PERSPECTIVE_FOV} near={0.05} far={20000} />
       ) : (
         // up = −Z puts the back wall at the top of the screen.
         <OrthographicCamera
@@ -106,8 +107,8 @@ export function CameraRig() {
         // look counts as 90° from up — clamping there would tilt the plan.)
         maxPolarAngle={view === "perspective" ? Math.PI * 0.48 : Math.PI}
         minDistance={1}
-        maxDistance={40}
-        minZoom={8}
+        maxDistance={10000}
+        minZoom={0.01}
         maxZoom={800}
         autoRotate={autoRotate}
         autoRotateSpeed={0.5}

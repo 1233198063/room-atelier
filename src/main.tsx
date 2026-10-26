@@ -6,9 +6,17 @@ import "./styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import { startAutosave } from "./store/autosave";
+import { saveNow, startAutosave } from "./store/autosave";
+import { addRoomFromLink } from "./store/roomTemplateLink";
 
 startAutosave();
+
+// Consume the explicit create-room link once, outside StrictMode's effect replay.
+const cleanRoomUrl = addRoomFromLink(window.location.href);
+if (cleanRoomUrl) {
+  window.history.replaceState(window.history.state, "", cleanRoomUrl);
+  saveNow();
+}
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -1,5 +1,5 @@
 import type { Dimensions } from "../../types";
-import { MATERIALS as M } from "../materials";
+import { useMaterials } from "../RoomContext";
 import { Box } from "./Box";
 
 const GAP = 0.004;
@@ -10,6 +10,7 @@ const FRONT_T = 0.018;
  * doors — so the same type works as a nightstand, sideboard or wardrobe.
  */
 export function Cabinet({ width: w, depth: d, height: h }: Dimensions) {
+  const M = useMaterials();
   const plinthH = Math.min(0.08, h * 0.1);
   const bodyD = d - 0.02;
   const bodyH = h - plinthH;
@@ -36,6 +37,7 @@ interface FrontProps {
 }
 
 function Drawers({ w, bodyH, plinthH, frontZ }: FrontProps) {
+  const M = useMaterials();
   const count = Math.max(1, Math.min(5, Math.round(bodyH / 0.22)));
   const fh = (bodyH - GAP * (count + 1)) / count;
   const handleW = Math.min(0.16, w * 0.4);
@@ -55,6 +57,7 @@ function Drawers({ w, bodyH, plinthH, frontZ }: FrontProps) {
 }
 
 function Doors({ w, bodyH, plinthH, frontZ }: FrontProps) {
+  const M = useMaterials();
   const count = Math.max(1, Math.min(4, Math.round(w / 0.5)));
   const dw = (w - GAP * (count + 1)) / count;
   const y = plinthH + bodyH / 2;

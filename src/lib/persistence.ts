@@ -1,10 +1,12 @@
-import type { Furniture, Layout, Opening, Palette, Room, Wall } from "../types";
+import type { Furniture, Layout, Opening, Palette, ProjectRoom, Room, RoomContents, Wall } from "../types";
 import { CATALOG, ROOM_LIMITS } from "./catalog";
 import { clamp, normalizeDeg } from "./geometry";
 import { OPENING_CATALOG, WALLS } from "./openings";
 import { DEFAULT_PALETTE, isHexColor, PALETTE_COLORS } from "./palettes";
+import { sanitizeFurnitureColors } from "./furnitureColors";
 
-export const STORAGE_KEY = "room-atelier:layout:v1";
+export const STORAGE_KEY = "room-atelier:layout:v2";
+export const LEGACY_STORAGE_KEY = "room-atelier:layout:v1";
 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
@@ -22,16 +24,18 @@ function parseRoom(raw: unknown): Room | null {
 function parseFurniture(raw: unknown): Furniture | null {
   if (!isObject(raw)) return null;
   const { id, type, name, position, rotation, dimensions } = raw;
-  if (typeof id !== "string" || typeof type !== "string" || !(type in CATALOG)) return null;
+  if (typeof id !== "string" || !id || typeof type !== "string" || !Object.hasOwn(CATALOG, type)) return null;
   if (!Array.isArray(position) || position.length !== 3 || !position.every(isNum)) return null;
   if (!isNum(rotation) || !isObject(dimensions)) return null;
   const { width, height, depth } = dimensions;
   if (!isNum(width) || !isNum(height) || !isNum(depth)) return null;
 
   const entry = CATALOG[type as Furniture["type"]];
+  const colors = sanitizeFurnitureColors(raw.colors);
   return {
     id,
     type: entry.type,
+    ...(colors ? { colors } : {}),
     name: typeof name === "string" && name.trim() ? name : entry.label,
     position: [position[0], position[1], position[2]],
     rotation: normalizeDeg(rotation),
@@ -46,7 +50,7 @@ function parseFurniture(raw: unknown): Furniture | null {
 function parseOpening(raw: unknown): Opening | null {
   if (!isObject(raw)) return null;
   const { id, type, name, wall, offset, width, height, elevation, hinge } = raw;
-  if (typeof id !== "string" || typeof type !== "string" || !(type in OPENING_CATALOG)) return null;
+  if (typeof id !== "string" || !id || typeof type !== "string" || !Object.hasOwn(OPENING_CATALOG, type)) return null;
   if (typeof wall !== "string" || !WALLS.includes(wall as Wall)) return null;
   if (!isNum(offset) || !isNum(width) || !isNum(height) || !isNum(elevation)) return null;
 
@@ -80,8 +84,7 @@ function parsePalette(raw: unknown): Palette {
  * older version of the app). Returns null if the payload is unusable; drops
  * individual furniture entries that are malformed.
  */
-export function parseLayout(raw: unknown): Layout | null {
-  if (!isObject(raw) || raw.version !== 1) return null;
+function parseContents(raw: Record<string, unknown>): RoomContents | null {
   const room = parseRoom(raw.room);
   if (!room || !Array.isArray(raw.furniture)) return null;
   const furniture = raw.furniture.map(parseFurniture).filter((f): f is Furniture => f !== null);
@@ -89,9 +92,45 @@ export function parseLayout(raw: unknown): Layout | null {
   const openings = Array.isArray(raw.openings)
     ? raw.openings.map(parseOpening).filter((o): o is Opening => o !== null)
     : [];
-  const projectName =
-    typeof raw.projectName === "string" && raw.projectName.trim() ? raw.projectName : "Untitled room";
-  return { version: 1, projectName, room, furniture, openings, palette: parsePalette(raw.palette) };
+  return { room, furniture, openings, palette: parsePalette(raw.palette) };
+}
+
+export function parseLayout(raw: unknown): Layout | null {
+  if (!isObject(raw) || (raw.version !== 1 && raw.version !== 2)) return null;
+  const projectName = typeof raw.projectName === "string" && raw.projectName.trim() ? raw.projectName : "Untitled room";
+  let rooms: ProjectRoom[];
+  if (raw.version === 1) {
+    const contents = parseContents(raw);
+    if (!contents) return null;
+    rooms = [{ ...contents, id: "room-original", name: projectName, position: [0, 0], rotation: 0 }];
+  } else {
+    if (!Array.isArray(raw.rooms)) return null;
+    const ids = new Set<string>();
+    rooms = raw.rooms.flatMap((r): ProjectRoom[] => {
+      if (!isObject(r) || typeof r.id !== "string" || !r.id || ids.has(r.id)) return [];
+      const contents = parseContents(r);
+      if (!contents) return [];
+      ids.add(r.id);
+      const position: [number, number] = Array.isArray(r.position) && r.position.length === 2 && r.position.every(isNum)
+        ? [clamp(r.position[0], -1000, 1000), clamp(r.position[1], -1000, 1000)] : [0, 0];
+      return [{ ...contents, id: r.id, name: typeof r.name === "string" && r.name.trim() ? r.name : "Room",
+        position, rotation: isNum(r.rotation) ? normalizeDeg(r.rotation) : 0 }];
+    });
+  }
+  if (!rooms.length) return null;
+  // Object IDs must be unique across rooms as well as furniture and openings.
+  const seen = new Set<string>();
+  rooms = rooms.map((r) => {
+    const unique = <T extends { id: string }>(items: T[]) => items.filter((item) => {
+      if (seen.has(item.id)) return false;
+      seen.add(item.id);
+      return true;
+    });
+    return { ...r, furniture: unique(r.furniture), openings: unique(r.openings) };
+  });
+  const activeRoomId = typeof raw.activeRoomId === "string" && rooms.some((r) => r.id === raw.activeRoomId)
+    ? raw.activeRoomId : rooms[0].id;
+  return { version: 2, projectName, rooms, activeRoomId, roomDisplay: raw.roomDisplay === "all" ? "all" : "single" };
 }
 
 function storage(): Storage | null {
@@ -104,8 +143,16 @@ function storage(): Storage | null {
 
 export function loadLayout(): Layout | null {
   try {
-    const text = storage()?.getItem(STORAGE_KEY);
-    return text ? parseLayout(JSON.parse(text)) : null;
+    const s = storage();
+    for (const key of [STORAGE_KEY, LEGACY_STORAGE_KEY]) {
+      const text = s?.getItem(key);
+      if (!text) continue;
+      try {
+        const parsed = parseLayout(JSON.parse(text));
+        if (parsed) return parsed;
+      } catch { /* Try the preserved legacy save if the new one is unusable. */ }
+    }
+    return null;
   } catch {
     return null;
   }

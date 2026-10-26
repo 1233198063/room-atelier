@@ -1,10 +1,10 @@
 import { MeshBasicMaterial, MeshStandardMaterial } from "three";
-import type { Palette } from "../types";
+import type { FurnitureColors, Palette } from "../types";
+import { PLANT_COLORS } from "../lib/furnitureColors";
 
 /**
- * Materials are shared module-level instances: every chair leg in the scene
- * uses the same `oak` material, so the GPU compiles one shader instead of
- * one per mesh.
+ * Material templates. RoomProvider clones one set per room, so furniture
+ * within a room shares materials while each room keeps its own palette.
  */
 export const MATERIALS = {
   oak: new MeshStandardMaterial({ color: "#d9b88f", roughness: 0.62 }),
@@ -18,9 +18,9 @@ export const MATERIALS = {
   /** In plan view walls are drawn solid and dark, like the poché of an architectural drawing. */
   wallPlan: new MeshStandardMaterial({ color: "#6e6255", roughness: 1 }),
   // Plants: faceted (flat-shaded) leaves read as deliberate low-poly, not cheap spheres.
-  leaf: new MeshStandardMaterial({ color: "#7f9c69", roughness: 0.85, flatShading: true }),
+  leaf: new MeshStandardMaterial({ color: PLANT_COLORS.leaves, roughness: 0.85, flatShading: true }),
   leafDark: new MeshStandardMaterial({ color: "#5f7d51", roughness: 0.85, flatShading: true }),
-  terracotta: new MeshStandardMaterial({ color: "#c47f5b", roughness: 0.9 }),
+  terracotta: new MeshStandardMaterial({ color: PLANT_COLORS.pot, roughness: 0.9 }),
   soil: new MeshStandardMaterial({ color: "#5b4636", roughness: 1 }),
   /** Painted door casing — a warm white a shade off the walls. */
   trim: new MeshStandardMaterial({ color: "#efe8dc", roughness: 0.6 }),
@@ -34,20 +34,35 @@ export const MATERIALS = {
   }),
 };
 
+export function cloneMaterials(): typeof MATERIALS {
+  return Object.fromEntries(Object.entries(MATERIALS).map(([key, material]) => [key, material.clone()])) as typeof MATERIALS;
+}
+
 /**
- * Push a palette into the shared materials. Because every mesh references
- * these same material objects, one `color.set()` recolors the whole scene —
+ * Push a palette into a room's materials. Because its meshes reference
+ * these same material objects, one `color.set()` recolors that room —
  * no React re-render, no new geometry.
  */
-export function applyPalette(p: Palette) {
-  MATERIALS.wall.color.set(p.wall);
-  MATERIALS.oak.color.set(p.wood);
-  MATERIALS.oakDark.color.set(p.woodDark);
-  MATERIALS.linen.color.set(p.fabric);
-  MATERIALS.duvet.color.set(p.fabric).multiplyScalar(0.96);
-  MATERIALS.cushion.color.set(p.fabric).lerp(MATERIALS.oak.color, 0.35);
-  MATERIALS.throw.color.set(p.accent);
-  MATERIALS.brass.color.set(p.metal);
+export function applyPalette(p: Palette, materials = MATERIALS) {
+  materials.wall.color.set(p.wall);
+  materials.oak.color.set(p.wood);
+  materials.oakDark.color.set(p.woodDark);
+  materials.linen.color.set(p.fabric);
+  materials.duvet.color.set(p.fabric).multiplyScalar(0.96);
+  materials.cushion.color.set(p.fabric).lerp(materials.oak.color, 0.35);
+  materials.throw.color.set(p.accent);
+  materials.brass.color.set(p.metal);
+}
+
+/** Reapply inherited colors first, so clearing an override never leaves an old tint behind. */
+export function applyFurnitureColors(palette: Palette, colors: FurnitureColors, materials: typeof MATERIALS) {
+  applyPalette({ ...palette, ...colors }, materials);
+  // A chosen cushion color is exact; the default keeps the room's original fabric/wood mix.
+  if (colors.fabric) materials.cushion.color.set(colors.fabric);
+  materials.terracotta.color.set(colors.pot ?? PLANT_COLORS.pot);
+  materials.leaf.color.set(colors.leaves ?? PLANT_COLORS.leaves);
+  if (colors.leaves) materials.leafDark.color.set(colors.leaves).multiplyScalar(0.72);
+  else materials.leafDark.color.copy(MATERIALS.leafDark.color);
 }
 
 /** Invisible but still hit by raycasts — used as an easy-to-click target for openings. */

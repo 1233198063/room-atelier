@@ -6,7 +6,8 @@ import { useEditor } from "../store/editorStore";
 import type { Room, Wall } from "../types";
 import { ClippedBox, type CutHeights } from "./ClippedBox";
 import { createFloorTexture, FLOOR_TILE_M } from "./floorTexture";
-import { MATERIALS } from "./materials";
+import { useMaterials, useRoomScene } from "./RoomContext";
+import { worldToLocal } from "../lib/rooms";
 import { OpeningItem } from "./OpeningItem";
 import { useFlaggedIds } from "./useFlaggedIds";
 
@@ -37,10 +38,11 @@ function cameraOutside(wall: Wall, x: number, z: number, room: Room) {
  *  - plan view: 1.2 m, the height architects slice a building at to draw a floor plan
  */
 export function RoomShell() {
-  const room = useEditor((s) => s.room);
+  const { data, placement } = useRoomScene();
+  const { room, openings, palette } = data;
+  const materials = useMaterials();
   const view = useEditor((s) => s.view);
-  const openings = useEditor((s) => s.openings);
-  const floorColor = useEditor((s) => s.palette.floor);
+  const floorColor = palette.floor;
   const selectedId = useEditor((s) => s.selectedId);
   const flagged = useFlaggedIds();
 
@@ -59,12 +61,13 @@ export function RoomShell() {
   // ref — animating them through React state 60×/s would be wasteful. Priority
   // −1 makes this run before the wall pieces read the values.
   useFrame(({ camera }, delta) => {
+    const [cx, cz] = worldToLocal([camera.position.x, camera.position.z], placement);
     const planCut = Math.min(PLAN_CUT_HEIGHT, room.height);
     for (const wall of WALLS) {
       const target =
         view === "top"
           ? planCut
-          : cameraOutside(wall, camera.position.x, camera.position.z, room)
+          : cameraOutside(wall, cx, cz, room)
             ? STUB_H
             : room.height;
       cut.current[wall] = MathUtils.damp(cut.current[wall], target, 12, delta);
@@ -75,7 +78,12 @@ export function RoomShell() {
 
   return (
     <group>
-      <mesh position={[room.width / 2, -FLOOR_T / 2, room.depth / 2]} receiveShadow>
+      <mesh position={[room.width / 2, -FLOOR_T / 2, room.depth / 2]} receiveShadow
+        onPointerDown={(e) => {
+          if (e.button !== 0 || useEditor.getState().mode !== "edit") return;
+          e.stopPropagation();
+          useEditor.getState().selectRoom(data.id);
+        }}>
         <boxGeometry args={[room.width, FLOOR_T, room.depth]} />
         <meshStandardMaterial map={floorTexture} color={floorColor} roughness={0.78} />
       </mesh>
@@ -88,7 +96,7 @@ export function RoomShell() {
           room={room}
           // In plan view, wall that the section plane slices through is drawn solid
           // and dark; what lies below the cut (a window sill) stays light.
-          material={view === "top" && seg.y1 > planCut ? MATERIALS.wallPlan : MATERIALS.wall}
+          material={view === "top" && seg.y1 > planCut ? materials.wallPlan : materials.wall}
           cut={cut}
           receiveShadow
         />

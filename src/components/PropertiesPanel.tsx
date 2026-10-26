@@ -1,3 +1,4 @@
+import { selectActiveRoom } from "../store/editorStore";
 import {
   AlignHorizontalJustifyCenter,
   AlignVerticalJustifyCenter,
@@ -33,23 +34,31 @@ import { StyleSection } from "./StyleSection";
 import { FurnitureIcon } from "./ui/FurnitureIcon";
 import { NumberField, type ChangeMeta } from "./ui/NumberField";
 import { Segmented } from "./ui/Segmented";
+import { RemoveRoomButton, RoomAssembly } from "./RoomAssembly";
+import { FurnitureColorSection } from "./FurnitureColorSection";
+import { PlantPlacementSection } from "./PlantPlacementSection";
 
 /** Translate a field's change metadata into how the store should record history. */
 const historyFor = (key: string, meta: ChangeMeta) =>
   meta.transient ? { history: false } : meta.coalesce ? { coalesceKey: key } : {};
 
 export function PropertiesPanel() {
+  const active = useEditor(selectActiveRoom);
+  const combined = useEditor((s) => s.roomDisplay === "all");
+  const select = useEditor((s) => s.select);
   const furniture = useEditor(selectSelected);
   const opening = useEditor(selectSelectedOpening);
   return (
     <aside className="panel panel--right" aria-label="Properties">
       <div className="panel__inner">
+        {(furniture || opening) && <button className="room-breadcrumb" type="button" onClick={() => select(null)}>← {active.name} · Room settings</button>}
+        {combined && !furniture && !opening && <RoomAssembly />}
         {furniture ? (
-          <FurnitureInspector f={furniture} />
+          <FurnitureInspector key={furniture.id} f={furniture} />
         ) : opening ? (
-          <OpeningInspector o={opening} />
+          <OpeningInspector key={opening.id} o={opening} />
         ) : (
-          <RoomInspector />
+          <RoomInspector key={active.id} />
         )}
       </div>
     </aside>
@@ -68,7 +77,7 @@ const ALIGN_ACTIONS: { target: Wall | "centerX" | "centerZ"; icon: LucideIcon; l
 ];
 
 function FurnitureInspector({ f }: { f: Furniture }) {
-  const room = useEditor((s) => s.room);
+  const room = useEditor((s) => selectActiveRoom(s).room);
   const update = useEditor((s) => s.updateFurniture);
   const align = useEditor((s) => s.alignFurniture);
   const duplicate = useEditor((s) => s.duplicateFurniture);
@@ -81,7 +90,7 @@ function FurnitureInspector({ f }: { f: Furniture }) {
   const bind = (field: string, toPatch: (current: Furniture, v: number) => FurniturePatch) => ({
     onChange: (v: number, meta: ChangeMeta) => {
       // Read the latest data: during a scrub this callback fires many times between renders.
-      const current = useEditor.getState().furniture.find((p) => p.id === f.id);
+      const current = selectActiveRoom(useEditor.getState()).furniture.find((p) => p.id === f.id);
       if (current) update(f.id, toPatch(current, v), historyFor(`${f.id}:${field}`, meta));
     },
     onScrubStart: beginGesture,
@@ -104,6 +113,10 @@ function FurnitureInspector({ f }: { f: Furniture }) {
       </section>
 
       <ItemIssues id={f.id} />
+
+      {f.type === "plant" && <PlantPlacementSection plant={f} />}
+
+      <FurnitureColorSection furniture={f} />
 
       <section className="section">
         <h3 className="section__title">Position</h3>
@@ -231,7 +244,7 @@ function FurnitureInspector({ f }: { f: Furniture }) {
   );
 }
 
-function NameInput({ value, onCommit }: { value: string; onCommit: (name: string) => void }) {
+function NameInput({ value, onCommit, label = "Name" }: { value: string; onCommit: (name: string) => void; label?: string }) {
   const [draft, setDraft] = useState<string | null>(null);
   const commit = () => {
     const name = draft?.trim();
@@ -241,7 +254,7 @@ function NameInput({ value, onCommit }: { value: string; onCommit: (name: string
   return (
     <input
       className="inspector-head__name"
-      aria-label="Name"
+      aria-label={label}
       value={draft ?? value}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
@@ -279,7 +292,7 @@ const WALL_OPTIONS: { value: Wall; label: string; icon: LucideIcon; hint: string
 ];
 
 function OpeningInspector({ o }: { o: Opening }) {
-  const room = useEditor((s) => s.room);
+  const room = useEditor((s) => selectActiveRoom(s).room);
   const update = useEditor((s) => s.updateOpening);
   const duplicate = useEditor((s) => s.duplicateOpening);
   const remove = useEditor((s) => s.removeOpening);
@@ -433,8 +446,10 @@ function ItemIssues({ id }: { id: string }) {
 // ── Room ─────────────────────────────────────────────────────────────────
 
 function RoomInspector() {
-  const room = useEditor((s) => s.room);
-  const furniture = useEditor((s) => s.furniture);
+  const active = useEditor(selectActiveRoom);
+  const updateRoom = useEditor((s) => s.updateRoom);
+  const room = useEditor((s) => selectActiveRoom(s).room);
+  const furniture = useEditor((s) => selectActiveRoom(s).furniture);
   const setRoom = useEditor((s) => s.setRoom);
   const clearFurniture = useEditor((s) => s.clearFurniture);
   const loadSample = useEditor((s) => s.loadSample);
@@ -455,8 +470,8 @@ function RoomInspector() {
   return (
     <>
       <section className="section">
-        <h2 className="inspector-title">Room</h2>
-        <p className="inspector-sub">Nothing selected — edit the room itself, or click a piece of furniture.</p>
+        <NameInput value={active.name} label="Room name" onCommit={(name) => updateRoom(active.id, { name })} />
+        <p className="inspector-sub">Edit this room, or select a piece of furniture. Its contents stay with it when you arrange rooms.</p>
       </section>
 
       <section className="section">
@@ -505,6 +520,7 @@ function RoomInspector() {
           <button type="button" className="btn" onClick={clearFurniture} disabled={furniture.length === 0} title="Remove all furniture (undoable)">
             <Eraser size={14} strokeWidth={1.8} /> Clear
           </button>
+          <RemoveRoomButton />
         </div>
       </section>
 

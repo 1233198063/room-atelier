@@ -75,8 +75,8 @@ describe("checkPalette", () => {
 describe("palette persistence", () => {
   it("loads old saves with the default palette and repairs bad colors", () => {
     const { palette: _, ...legacy } = SAMPLE_LAYOUT;
-    expect(parseLayout(JSON.parse(JSON.stringify(legacy)))?.palette).toEqual(DEFAULT_PALETTE);
+    expect(parseLayout(JSON.parse(JSON.stringify(legacy)))?.rooms[0].palette).toEqual(DEFAULT_PALETTE);
     const parsed = parseLayout({ ...SAMPLE_LAYOUT, palette: { id: "custom", wall: "#ABCDEF", wood: "red" } });
-    expect(parsed?.palette).toMatchObject({ id: "custom", wall: "#abcdef", wood: DEFAULT_PALETTE.wood });
+    expect(parsed?.rooms[0].palette).toMatchObject({ id: "custom", wall: "#abcdef", wood: DEFAULT_PALETTE.wood });
   });
 });

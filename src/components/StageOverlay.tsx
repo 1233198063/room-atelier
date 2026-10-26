@@ -1,6 +1,7 @@
 import { CircleCheck, Focus, Lightbulb, Pause, PencilRuler, Play, TriangleAlert } from "lucide-react";
 import { toCm } from "../lib/geometry";
-import { selectIssues, useEditor } from "../store/editorStore";
+import { selectActiveRoom, selectIssues, useEditor } from "../store/editorStore";
+import { RoomDisplayControl } from "./RoomManager";
 
 const HINTS = {
   perspective: "Drag to orbit · Right-drag to pan · Scroll to zoom",
@@ -46,10 +47,14 @@ function CheckChip() {
 
 /** HTML laid over the canvas: hints, camera controls, and the preview-mode placard. */
 export function StageOverlay() {
+  const rooms = useEditor((s) => s.rooms);
+  const active = useEditor(selectActiveRoom);
+  const combined = useEditor((s) => s.roomDisplay === "all");
+  const selectRoom = useEditor((s) => s.selectRoom);
   const mode = useEditor((s) => s.mode);
   const view = useEditor((s) => s.view);
-  const room = useEditor((s) => s.room);
-  const count = useEditor((s) => s.furniture.length);
+  const room = useEditor((s) => selectActiveRoom(s).room);
+  const count = useEditor((s) => selectActiveRoom(s).furniture.length);
   const projectName = useEditor((s) => s.projectName);
   const autoRotate = useEditor((s) => s.autoRotate);
   const setAutoRotate = useEditor((s) => s.setAutoRotate);
@@ -58,6 +63,12 @@ export function StageOverlay() {
 
   return (
     <div className="overlay">
+      <div className="room-viewbar">
+        <select aria-label="Current room" value={active.id} onChange={(e) => selectRoom(e.target.value)}>
+          {rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+        </select>
+        <RoomDisplayControl />
+      </div>
       {mode === "edit" && (
         <div className="overlay__top">
           <CheckChip />
@@ -66,10 +77,10 @@ export function StageOverlay() {
       {mode === "preview" && (
         <div className="placard">
           <span className="placard__eyebrow">Room Atelier · Preview</span>
-          <h1 className="placard__title">{projectName}</h1>
+          <h1 className="placard__title">{combined ? projectName : active.name}</h1>
           <span className="placard__meta">
-            {toCm(room.width)} × {toCm(room.depth)} cm · {(room.width * room.depth).toFixed(1)} m² · {count}{" "}
-            {count === 1 ? "piece" : "pieces"}
+            {combined ? `${rooms.length} rooms · ${rooms.reduce((sum, r) => sum + r.room.width * r.room.depth, 0).toFixed(1)} m²`
+              : `${toCm(room.width)} × ${toCm(room.depth)} cm · ${(room.width * room.depth).toFixed(1)} m² · ${count} ${count === 1 ? "piece" : "pieces"}`}
           </span>
         </div>
       )}
@@ -84,7 +95,7 @@ export function StageOverlay() {
             </button>
           )}
           <button type="button" className="chip" onClick={resetCamera} title="Frame the whole room (F)">
-            <Focus size={14} strokeWidth={1.8} /> Frame room
+            <Focus size={14} strokeWidth={1.8} /> {combined ? "Frame all" : "Frame room"}
           </button>
           {mode === "preview" && (
             <button type="button" className="chip chip--dark" onClick={() => setMode("edit")} title="Back to editing (Esc)">

@@ -1,9 +1,10 @@
 import type { Dimensions } from "../../types";
-import { MATERIALS as M } from "../materials";
+import { useMaterials } from "../RoomContext";
 import { Box } from "./Box";
 
 /** Backrest at local +Z, so the sitter faces −Z (toward a desk placed in front of it). */
 export function Chair({ width: w, depth: d, height: h }: Dimensions) {
+  const M = useMaterials();
   const seatY = Math.min(0.46, h * 0.55);
   const seatT = 0.04;
   const leg = 0.035;

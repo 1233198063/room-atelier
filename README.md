@@ -12,9 +12,12 @@ A browser-based 3D room planner. In **Edit** mode it behaves like a small CAD to
 
 ## Features
 
+- **Photo-inspired sunlit study.** The supplied reference is available as **阳光里的墨香与旅行手账** in the Rooms sidebar, or through `/?room=sunlit-study`. Opening that link appends a furnished room and consumes the URL command so refreshing does not add duplicates. Existing rooms are preserved, and the addition is undoable. Its 4.8 × 5.8 × 2.9 m dimensions are estimates from the image. The editable interpretation includes full-height bookcases, a central craft table, a calligraphy workbench, a reading chair and ottoman, a patterned rug, blue curtains and plants; fine artwork, outdoor scenery and the pet are not reproduced.
+- **Multiple rooms.** Add and name rooms with independent dimensions, furniture, openings and color schemes. Switch between **Single room** and **Together** in either 3D or Plan view. In Together mode, drag rooms in the assembly plan, enter X/Z coordinates and rotation, or join a room to any side of another room. Exterior edges snap together; hold Alt for free placement. Overlapping rooms are flagged. Room creation, placement and deletion support undo/redo and autosave, and existing single-room saves migrate automatically.
+- **Individual furniture colors.** Select a piece and use **Colors** in its properties to choose body, legs/base, textiles or hardware colors, depending on the model. Plants have pot and leaf colors too. Pick a color or enter a six-digit hex code. Custom colors belong to that piece, survive room-style changes, and are copied when duplicating; **Use defaults** returns it to the current room palette and model defaults. Color edits support undo/redo and autosave, and older saves keep their existing appearance.
 - **Real-size rooms.** Enter width, depth and height in cm and the floor and walls are generated to match. Shrinking the room pulls furniture back inside.
 - **Parametric furniture.** Bed, desk, chair, cabinet and dresser are built from code, so they stay correct at any size. A cabinet under 1 m gets drawers, a taller one gets doors, so the same type works as a nightstand or a wardrobe. The dresser's grid of drawers adapts to its size: two columns from 1 m wide, one row per ~20 cm of height.
-- **Plants.** Floor and tabletop plants share one parametric model: tall ones grow a trunk, short ones stay bushy. Drag a plant over a desk, dresser or low cabinet and it lands on top.
+- **Plants.** Floor and tabletop plants share one parametric model: tall ones grow a trunk, short ones stay bushy. Drag onto the visible top of a cabinet, bookcase, desk or dresser; suitable tops highlight green, the pot stays supported at edges, and dragging clearly past an edge returns it to the floor. Dragging follows the actual support height in both single and assembled rooms. Select a plant and use **Place on a surface** in Properties for direct placement (or return to an open floor spot). Only tops that fit the pot and leave enough ceiling clearance are offered. Hold Alt to bypass the grid for fine adjustments.
 - **Color schemes.** Five curated palettes (Warm Oak, Nordic, Japandi, Mid-century, Plaster & Clay), switched in one click. Seven color roles (walls, floor, wood, dark wood, textiles, accent, hardware) can each be fine-tuned. Rule-based suggestions mark the palettes that suit the room, based on its floor area and how much window glass it has, and say why. Color tips flag furniture that blends into the walls, or dark walls in a small or dim room.
 - **Layout check.** A rule-based "linter" for rooms, with no AI. It flags overlapping pieces, blocked door swings, tall furniture in front of windows, desks without room for a chair, and drawers or doors with no space to open. It also gives softer tips: a tight side of the bed, or a desk or plant far from daylight. Every message includes the measured numbers, and clicking it jumps to the piece to move. Pieces with warnings are outlined in amber.
 - **Doors and windows.** Add them from the library, drag them along a wall or onto a different wall, and set width, height and sill height precisely. Walls are split around each opening, with no boolean geometry. Doors show their swing arc on the floor, so you can see what space to keep clear. In plan view, walls are cut at 1.2 m like an architectural floor plan, so windows show as the classic double line.
@@ -35,6 +38,19 @@ npm run dev      # http://localhost:5173
 npm test         # unit tests (geometry, persistence, store, input parsing)
 npm run build    # type-check + production build
 ```
+
+### Working with multiple rooms
+
+1. Choose **Add room** in the left sidebar. Select a room there or from the canvas dropdown to edit its contents. Click its name in the properties panel to rename it.
+2. Choose **Single room** to view only that room. Choose **Together** to see the assembled project. Both work in Edit and Preview modes.
+3. In Together/Edit mode, deselect furniture to see **Arrange rooms**. Drag any room in the small plan, use the X/Z and rotation fields, or choose a neighbor and click Left/Back/Front/Right. Focus a room in the small plan and use arrow keys for 1 cm nudges, or Shift+arrows for 10 cm.
+4. Use **Frame all** (F) after precise placement to fit the entire layout. Each room keeps its furniture and openings in local coordinates when moved or rotated.
+
+To add the reference study, click its image card below the room list. The new bookcase, craft table, armchair, ottoman, rug and curtain models also appear in the furniture library and support individual colors. Craft-table height includes its desktop tools; plants sit on the tabletop 16 cm below that total height. Rugs and curtains are excluded from circulation checks and floor-coverage totals.
+
+Joining positions complete rooms with their exterior walls touching. It preserves their individual walls and openings; it does not automatically cut connecting doors. The room selected in the sidebar determines which room receives new furniture and which room the layout checks describe.
+
+Projects save in the version 2 format under `room-atelier:layout:v2`. On first load, a version 1 save is wrapped in a single room at the origin; the old storage entry is preserved as a backup.
 
 ## Architecture
 
@@ -58,7 +74,7 @@ Dragging a chair in the canvas and typing its X coordinate in the panel are the 
 ### Units and coordinates
 
 - 1 Three.js unit = 1 meter. The UI shows centimeters.
-- Y is up. The room's back-left floor corner is the origin, so X reads as "distance from the left wall" and Z as "distance from the back wall".
+- Y is up. Each room's back-left floor corner is its local origin, so furniture X reads as "distance from the left wall" and Z as "distance from the back wall". A room also has an independent world X/Z position and Y rotation for assembly; Single room view ignores that transform without changing it.
 - `position` is the center of the furniture's footprint. `rotation` is in degrees around Y (counter-clockwise seen from above).
 - An opening's `offset` is its center along its wall, in the same coordinates: an X value on the back and front walls, a Z value on the side walls.
 

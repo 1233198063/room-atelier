@@ -1,5 +1,5 @@
 import type { Dimensions } from "../../types";
-import { MATERIALS as M } from "../materials";
+import { useMaterials } from "../RoomContext";
 import { Box } from "./Box";
 
 const GAP = 0.004;
@@ -11,6 +11,7 @@ const FRONT_T = 0.018;
  * one row per ~20 cm of height. Fronts face local +Z.
  */
 export function Dresser({ width: w, depth: d, height: h }: Dimensions) {
+  const M = useMaterials();
   const topT = 0.025;
   const legH = Math.min(0.15, Math.max(0.06, h * 0.14));
   const leg = 0.035;

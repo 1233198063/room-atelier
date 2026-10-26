@@ -1,10 +1,21 @@
+import { useRoomScene } from "./RoomContext";
+import { worldToLocal, type Placement } from "../lib/rooms";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
 import { useCallback } from "react";
 import { Plane, Ray, Raycaster, Vector2, Vector3 } from "three";
 import { snapTo } from "../lib/geometry";
 import { runsAlongX, WALLS, wallLength } from "../lib/openings";
-import { useEditor } from "../store/editorStore";
+import { selectActiveRoom, useEditor } from "../store/editorStore";
 import type { Room, ViewMode, Wall } from "../types";
+
+/** Transform the picking ray into this room's coordinates. */
+export function roomLocalRay(ray: Ray, placement: Placement): Ray {
+  const [x, z] = worldToLocal([ray.origin.x, ray.origin.z], placement);
+  const a = placement.rotation * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  return new Ray(new Vector3(x, ray.origin.y, z), new Vector3(
+    ray.direction.x * c - ray.direction.z * s, ray.direction.y,
+    ray.direction.x * s + ray.direction.z * c));
+}
 
 const DRAG_THRESHOLD_PX = 4;
 const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
@@ -67,6 +78,7 @@ export function pickWallPoint(ray: Ray, room: Room, view: ViewMode): { wall: Wal
  * is updated, the meshes follow.
  */
 export function useOpeningDrag(id: string) {
+  const { data, placement } = useRoomScene();
   const get = useThree((s) => s.get);
 
   return useCallback(
@@ -74,11 +86,12 @@ export function useOpeningDrag(id: string) {
       const editor = useEditor.getState();
       if (editor.mode !== "edit" || e.button !== 0) return;
       e.stopPropagation();
+      if (editor.activeRoomId !== data.id) editor.selectRoom(data.id);
       editor.select(id);
 
-      const opening = editor.openings.find((o) => o.id === id);
+      const opening = data.openings.find((o) => o.id === id);
       if (!opening) return;
-      const start = pickWallPoint(e.ray, editor.room, editor.view);
+      const start = pickWallPoint(roomLocalRay(e.ray, placement), data.room, editor.view);
       // Keep the grab point under the cursor while sliding along the original wall.
       const grab = start && start.wall === opening.wall ? opening.offset - start.along : 0;
 
@@ -104,7 +117,8 @@ export function useOpeningDrag(id: string) {
         raycaster.setFromCamera(ndc, get().camera);
 
         const s = useEditor.getState();
-        const hit = pickWallPoint(raycaster.ray, s.room, s.view);
+        if (s.activeRoomId !== data.id) { onUp(); return; }
+        const hit = pickWallPoint(roomLocalRay(raycaster.ray, placement), selectActiveRoom(s).room, s.view);
         if (!hit) return;
         let offset = hit.along + (hit.wall === opening.wall ? grab : 0);
         if (s.snapStep > 0 && !ev.altKey) offset = snapTo(offset, s.snapStep);
@@ -124,6 +138,6 @@ export function useOpeningDrag(id: string) {
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [get, id],
+    [get, id, data, placement],
   );
 }

@@ -1,5 +1,5 @@
 import type { Dimensions, Furniture, Room, Wall } from "../types";
-import { SURFACE_MAX_HEIGHT, SURFACE_TYPES } from "./catalog";
+import { DECOR_TYPES, SURFACE_TYPES, WORKTABLE_TOOL_HEIGHT } from "./catalog";
 import { pointInPolygon, type Pt } from "./polygon";
 
 // ── Units ────────────────────────────────────────────────────────────────
@@ -73,12 +73,16 @@ export function footprintCorners(f: Pick<Furniture, "position" | "dimensions" | 
 }
 
 /** Height of the highest furniture top (desk, dresser…) under a floor point — 0 if it's bare floor. */
+export function furnitureSurfaceHeight(f: Furniture): number {
+  return f.position[1] + f.dimensions.height - (f.type === "worktable" ? WORKTABLE_TOOL_HEIGHT : 0);
+}
+
 export function surfaceHeightAt(x: number, z: number, furniture: Furniture[], excludeId?: string): number {
   let height = 0;
   for (const f of furniture) {
     if (f.id === excludeId || !SURFACE_TYPES.includes(f.type)) continue;
-    const top = f.position[1] + f.dimensions.height;
-    if (top <= SURFACE_MAX_HEIGHT && pointInPolygon([x, z], footprintCorners(f))) height = Math.max(height, top);
+    const top = furnitureSurfaceHeight(f);
+    if (pointInPolygon([x, z], footprintCorners(f))) height = Math.max(height, top);
   }
   return height;
 }
@@ -194,7 +198,7 @@ export function findFreeSpot(dim: Dimensions, room: Room, existing: Furniture[])
         if (Math.max(Math.abs(i), Math.abs(j)) !== ring) continue; // only the ring's perimeter
         const [x, z] = clampToRoom(cx + i * step, cz + j * step, dim, 0, room);
         const candidate = footprintBounds({ position: [x, 0, z], dimensions: dim, rotation: 0 });
-        if (!existing.some((f) => overlaps(candidate, footprintBounds(f)))) {
+        if (!existing.some((f) => !DECOR_TYPES.includes(f.type) && overlaps(candidate, footprintBounds(f)))) {
           return [roundMm(x), roundMm(z)];
         }
       }
@@ -205,6 +209,6 @@ export function findFreeSpot(dim: Dimensions, room: Room, existing: Furniture[])
 
 /** Share of the floor covered by furniture footprints (ignores overlaps). */
 export function floorCoverage(furniture: Furniture[], room: Room) {
-  const used = furniture.reduce((sum, f) => sum + f.dimensions.width * f.dimensions.depth, 0);
+  const used = furniture.filter((f) => !DECOR_TYPES.includes(f.type)).reduce((sum, f) => sum + f.dimensions.width * f.dimensions.depth, 0);
   return used / (room.width * room.depth);
 }

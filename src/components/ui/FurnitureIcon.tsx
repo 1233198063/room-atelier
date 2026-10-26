@@ -5,6 +5,12 @@ export type ItemType = FurnitureType | OpeningType;
 
 /** Simple line drawings for the library — side/front elevations, like an architect's sketch. */
 const PATHS: Record<ItemType, ReactNode> = {
+  bookcase: <><rect x="7" y="5" width="34" height="36" /><path d="M7 16h34M7 27h34M7 34h34M14 7v9M19 9v7M24 7l3 9M31 18v9M15 36h5M29 36h5" /></>,
+  worktable: <><path d="M5 18h38v5H5zM9 23v18M39 23v18M9 34h30M15 13h9v5M29 10h7v8" /></>,
+  armchair: <><rect x="11" y="7" width="26" height="24" rx="6" /><rect x="7" y="23" width="7" height="12" rx="3" /><rect x="34" y="23" width="7" height="12" rx="3" /><path d="M14 29h20v7H14zM12 36v5M36 36v5" /></>,
+  ottoman: <><rect x="8" y="17" width="32" height="13" rx="5" /><path d="M12 30v8M36 30v8M8 24h32" /></>,
+  rug: <><path d="M7 9h34v30H7zM11 13h26v22H11zM24 16l8 8-8 8-8-8zM9 5v4M15 5v4M21 5v4M27 5v4M33 5v4M39 5v4M9 39v4M15 39v4M21 39v4M27 39v4M33 39v4M39 39v4" /></>,
+  curtains: <><path d="M5 7h38M9 8v32h9l-3-16 4-16M39 8v32h-9l3-16-4-16M13 8l-1 17v15M35 8l1 17v15" /></>,
   bed: (
     <>
       <rect x="6" y="11" width="4" height="25" rx="1" />

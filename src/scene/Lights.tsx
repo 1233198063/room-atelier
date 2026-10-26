@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 import type { DirectionalLight } from "three";
-import { useEditor } from "../store/editorStore";
+import { selectSceneBounds, useEditor } from "../store/editorStore";
 
 // Since three r155 light intensities are physically based, so "1" is dimmer than
 // it used to be — these values are tuned by eye for a bright, airy interior.
@@ -20,14 +20,17 @@ const PRESETS = {
  * camera cuts away — so the walls you're looking at are the lit ones.
  */
 export function Lights() {
-  const room = useEditor((s) => s.room);
+  const rooms = useEditor((s) => s.rooms);
+  const activeId = useEditor((s) => s.activeRoomId);
+  const display = useEditor((s) => s.roomDisplay);
+  const room = useMemo(() => selectSceneBounds(useEditor.getState()), [rooms, activeId, display]);
   const mode = useEditor((s) => s.mode);
   const plan = useEditor((s) => s.view === "top");
   const sun = useRef<DirectionalLight>(null);
   const p = PRESETS[mode];
 
-  const cx = room.width / 2;
-  const cz = room.depth / 2;
+  const cx = (room.minX + room.maxX) / 2;
+  const cz = (room.minZ + room.maxZ) / 2;
   const span = Math.max(room.width, room.depth);
 
   // A directional light shines toward its `target`. The target isn't part of the

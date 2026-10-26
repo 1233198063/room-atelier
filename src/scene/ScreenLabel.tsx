@@ -1,3 +1,5 @@
+import { useRoomScene } from "./RoomContext";
+import { localToWorld } from "../lib/rooms";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo } from "react";
 import { Vector3 } from "three";
@@ -17,6 +19,7 @@ interface ScreenLabelProps {
  * React root — the label is just a DOM node we position ourselves.
  */
 export function ScreenLabel({ position, text, className }: ScreenLabelProps) {
+  const { placement } = useRoomScene();
   const host = useThree((s) => s.gl.domElement.parentElement);
   const el = useMemo(() => {
     const div = document.createElement("div");
@@ -37,7 +40,8 @@ export function ScreenLabel({ position, text, className }: ScreenLabelProps) {
   }, [el, text, className]);
 
   useFrame(({ camera, size }) => {
-    point.set(position[0], position[1], position[2]).project(camera);
+    const [wx, wz] = localToWorld([position[0], position[2]], placement);
+    point.set(wx, position[1], wz).project(camera);
     const x = (point.x * 0.5 + 0.5) * size.width;
     const y = (-point.y * 0.5 + 0.5) * size.height;
     el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;

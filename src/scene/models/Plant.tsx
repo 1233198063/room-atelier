@@ -1,6 +1,6 @@
 import { IcosahedronGeometry } from "three";
 import type { Dimensions } from "../../types";
-import { MATERIALS as M } from "../materials";
+import { useMaterials } from "../RoomContext";
 
 /** One low-poly ball, shared by every leaf cluster in the scene and scaled into shape. */
 const CLUSTER = new IcosahedronGeometry(1, 1);
@@ -25,6 +25,7 @@ const CLUSTERS: [number, number, number, number][] = [
  * Width/depth set the canopy, height the overall plant.
  */
 export function Plant({ width: w, depth: d, height: h }: Dimensions) {
+  const M = useMaterials();
   const tall = h >= 0.7;
   const canopyR = Math.min(w, d) / 2;
   const potR = Math.min(w, d) * (tall ? 0.3 : 0.4);

@@ -1,6 +1,7 @@
 import { degToRad, toCm } from "../lib/geometry";
+import { furniturePlanColor } from "../lib/furnitureColors";
 import { openingSpan, runsAlongX, wallToWorld } from "../lib/openings";
-import { useEditor } from "../store/editorStore";
+import { selectActiveRoom, useEditor } from "../store/editorStore";
 import type { Furniture, Opening, Room } from "../types";
 
 /** The four floor-plan corners of a rotated piece, in world meters (x, z). */
@@ -64,10 +65,10 @@ function OpeningMark({ o, room, selected, onSelect }: { o: Opening; room: Room; 
  * scene — a nice demonstration that the data, not the meshes, is the truth.
  */
 export function PlanMinimap() {
-  const room = useEditor((s) => s.room);
-  const furniture = useEditor((s) => s.furniture);
-  const openings = useEditor((s) => s.openings);
-  const wood = useEditor((s) => s.palette.wood);
+  const room = useEditor((s) => selectActiveRoom(s).room);
+  const furniture = useEditor((s) => selectActiveRoom(s).furniture);
+  const openings = useEditor((s) => selectActiveRoom(s).openings);
+  const palette = useEditor((s) => selectActiveRoom(s).palette);
   const selectedId = useEditor((s) => s.selectedId);
   const select = useEditor((s) => s.select);
   const pad = 14;
@@ -83,12 +84,12 @@ export function PlanMinimap() {
     >
       <rect x={-BAND} y={-BAND} width={W + BAND * 2} height={D + BAND * 2} className="minimap__wall" />
       <rect x={0} y={0} width={W} height={D} className="minimap__floor" />
-      {furniture.map((f) => {
+      {[...furniture].sort((a, b) => Number(a.type !== "rug") - Number(b.type !== "rug")).map((f) => {
         const c = corners(f);
         const selected = f.id === selectedId;
         return (
           <g key={f.id} className={`minimap__piece${selected ? " is-selected" : ""}`} onClick={() => select(f.id)}>
-            <polygon points={pts(c)} style={selected ? undefined : { fill: wood }} />
+            <polygon points={pts(c)} style={selected ? undefined : { fill: furniturePlanColor(f, palette) }} />
             {/* Front edge (local +Z), so orientation is readable at a glance */}
             <polyline points={pts([c[2], c[3]])} className="minimap__front" />
           </g>

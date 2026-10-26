@@ -1,3 +1,6 @@
+import { useRoomScene } from "./RoomContext";
+import { worldToLocal } from "../lib/rooms";
+import { selectActiveRoom } from "../store/editorStore";
 import { Line } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useState } from "react";
@@ -61,7 +64,7 @@ function DimensionLine({ from, to, color, muted }: DimensionLineProps) {
 export function SelectionMeasurements() {
   const f = useEditor(selectSelected);
   const opening = useEditor(selectSelectedOpening);
-  const room = useEditor((s) => s.room);
+  const room = useEditor((s) => selectActiveRoom(s).room);
 
   if (opening) {
     const [a0, a1] = openingSpan(opening);
@@ -98,13 +101,15 @@ export function SelectionMeasurements() {
  * camera — so they stay readable as you orbit instead of hiding behind a wall.
  */
 export function RoomDimensions() {
-  const room = useEditor((s) => s.room);
+  const { placement } = useRoomScene();
+  const room = useEditor((s) => selectActiveRoom(s).room);
   const [near, setNear] = useState({ front: true, right: false });
 
   useFrame(({ camera }) => {
     // Ties (camera dead-center above the plan) resolve to front + left, like a drawing.
-    const front = camera.position.z > room.depth / 2 - 0.01;
-    const right = camera.position.x > room.width / 2 + 0.01;
+    const [cx, cz] = worldToLocal([camera.position.x, camera.position.z], placement);
+    const front = cz > room.depth / 2 - 0.01;
+    const right = cx > room.width / 2 + 0.01;
     if (front !== near.front || right !== near.right) setNear({ front, right });
   });
 

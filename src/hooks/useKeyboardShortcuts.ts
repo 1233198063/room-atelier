@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { runsAlongX } from "../lib/openings";
 import { saveNow } from "../store/autosave";
-import { useEditor } from "../store/editorStore";
+import { selectActiveRoom, useEditor } from "../store/editorStore";
 
 const NUDGE: Record<string, [number, number]> = {
   ArrowLeft: [-1, 0],
@@ -69,7 +69,7 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      const opening = s.openings.find((o) => o.id === s.selectedId);
+      const opening = selectActiveRoom(s).openings.find((o) => o.id === s.selectedId);
       if (opening) {
         if (key === "r" && opening.type === "door") {
           s.updateOpening(opening.id, { hinge: opening.hinge === "start" ? "end" : "start" });
@@ -85,7 +85,7 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      const selected = s.furniture.find((f) => f.id === s.selectedId);
+      const selected = selectActiveRoom(s).furniture.find((f) => f.id === s.selectedId);
       if (!selected) return;
       if (key === "r") {
         s.updateFurniture(selected.id, { rotation: selected.rotation + (e.shiftKey ? 90 : -90) });

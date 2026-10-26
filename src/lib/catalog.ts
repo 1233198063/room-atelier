@@ -11,6 +11,36 @@ export interface CatalogEntry {
 }
 
 export const CATALOG: Record<FurnitureType, CatalogEntry> = {
+  bookcase: {
+    type: "bookcase", label: "Bookcase", description: "Open shelves with books and lower drawers",
+    defaults: { width: 1.2, depth: 0.4, height: 2.4 },
+    min: { width: 0.5, depth: 0.25, height: 0.5 }, max: { width: 3, depth: 0.8, height: 3.5 },
+  },
+  worktable: {
+    type: "worktable", label: "Craft table", description: "Solid wood worktable with journals and drawing tools",
+    defaults: { width: 2.4, depth: 1.1, height: 0.78 },
+    min: { width: 0.9, depth: 0.45, height: 0.55 }, max: { width: 3.5, depth: 1.6, height: 1.1 },
+  },
+  armchair: {
+    type: "armchair", label: "Armchair", description: "Upholstered reading chair with a loose cushion",
+    defaults: { width: 0.85, depth: 0.85, height: 1.05 },
+    min: { width: 0.65, depth: 0.65, height: 0.8 }, max: { width: 1.3, depth: 1.2, height: 1.4 },
+  },
+  ottoman: {
+    type: "ottoman", label: "Ottoman", description: "Upholstered footstool on wooden feet",
+    defaults: { width: 0.65, depth: 0.5, height: 0.4 },
+    min: { width: 0.35, depth: 0.3, height: 0.2 }, max: { width: 1.2, depth: 1, height: 0.6 },
+  },
+  rug: {
+    type: "rug", label: "Patterned rug", description: "Woven rug with a border and floral medallions",
+    defaults: { width: 2.6, depth: 3.5, height: 0.012 },
+    min: { width: 0.5, depth: 0.5, height: 0.005 }, max: { width: 8, depth: 10, height: 0.03 },
+  },
+  curtains: {
+    type: "curtains", label: "Curtains", description: "Open pleated curtain panels and a metal rod",
+    defaults: { width: 2.8, depth: 0.16, height: 2.5 },
+    min: { width: 1, depth: 0.08, height: 0.8 }, max: { width: 5, depth: 0.3, height: 4 },
+  },
   bed: {
     type: "bed",
     label: "Bed",
@@ -71,13 +101,16 @@ export const PLANT_PRESETS: { key: string; label: string; dimensions: Dimensions
 
 /**
  * Furniture whose top you can put a small plant on. Dragging a plant over one
- * of these (if it's no taller than SURFACE_MAX_HEIGHT) lifts it onto the top.
+ * of these lifts it onto the top when the pot fits and there is room below the ceiling.
  */
-export const SURFACE_TYPES: FurnitureType[] = ["desk", "dresser", "cabinet"];
-export const SURFACE_MAX_HEIGHT = 1.4;
+export const SURFACE_TYPES: FurnitureType[] = ["desk", "dresser", "cabinet", "worktable", "bookcase"];
+export const WORKTABLE_TOOL_HEIGHT = 0.16;
 
 /** Pieces people routinely shift around; layout checks don't treat them as fixed obstacles. */
-export const MOVABLE_TYPES: FurnitureType[] = ["chair", "plant"];
+export const MOVABLE_TYPES: FurnitureType[] = ["chair", "plant", "ottoman"];
+
+/** Flat floor coverings and window dressings do not block circulation. */
+export const DECOR_TYPES: FurnitureType[] = ["rug", "curtains"];
 
 export const ROOM_LIMITS = {
   min: { width: 1.5, depth: 1.5, height: 2.0 },

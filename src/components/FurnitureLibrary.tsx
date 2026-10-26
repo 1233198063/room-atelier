@@ -2,9 +2,10 @@ import { Plus } from "lucide-react";
 import { CATALOG, FURNITURE_TYPES, PLANT_PRESETS } from "../lib/catalog";
 import { toCm } from "../lib/geometry";
 import { OPENING_CATALOG, OPENING_TYPES } from "../lib/openings";
-import { useEditor } from "../store/editorStore";
+import { selectActiveRoom, useEditor } from "../store/editorStore";
 import type { Wall } from "../types";
 import { FurnitureIcon, type ItemType } from "./ui/FurnitureIcon";
+import { RoomManager } from "./RoomManager";
 
 const WALL_LABEL: Record<Wall, string> = { back: "Back", front: "Front", left: "Left", right: "Right" };
 
@@ -33,8 +34,8 @@ function LibraryCard({ type, label, size, onAdd }: CardProps) {
 export function FurnitureLibrary() {
   const addFurniture = useEditor((s) => s.addFurniture);
   const addOpening = useEditor((s) => s.addOpening);
-  const furniture = useEditor((s) => s.furniture);
-  const openings = useEditor((s) => s.openings);
+  const furniture = useEditor((s) => selectActiveRoom(s).furniture);
+  const openings = useEditor((s) => selectActiveRoom(s).openings);
   const selectedId = useEditor((s) => s.selectedId);
   const select = useEditor((s) => s.select);
 
@@ -56,6 +57,7 @@ export function FurnitureLibrary() {
   return (
     <aside className="panel panel--left" aria-label="Furniture library">
       <div className="panel__inner">
+        <RoomManager />
         <section className="section">
           <h2 className="section__title">Furniture</h2>
           <div className="library">
@@ -87,7 +89,7 @@ export function FurnitureLibrary() {
               />
             ))}
           </div>
-          <p className="library-hint">Drag a plant onto a desk or dresser to set it on top.</p>
+          <p className="library-hint">Drag a plant onto a cabinet, shelf or desk. You can also select its surface in Properties.</p>
         </section>
 
         <section className="section">

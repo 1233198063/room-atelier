@@ -1,6 +1,6 @@
 import type { Furniture, Opening, Palette, Room } from "../types";
-import { MOVABLE_TYPES } from "./catalog";
-import { degToRad, footprintCorners, toCm } from "./geometry";
+import { DECOR_TYPES, MOVABLE_TYPES } from "./catalog";
+import { degToRad, footprintCorners, furnitureSurfaceHeight, toCm } from "./geometry";
 import { openingSpan, wallToWorld } from "./openings";
 import { contrast, glazingRatio, luminance, PALETTE_RULES } from "./palettes";
 import { polygonsOverlap, rayToPolygon, rayToRoomEdge, type Pt } from "./polygon";
@@ -135,6 +135,7 @@ function windowZone(o: Opening, room: Room): Pt[] {
 }
 
 export function checkLayout(room: Room, furniture: Furniture[], openings: Opening[]): Issue[] {
+  furniture = furniture.filter((f) => !DECOR_TYPES.includes(f.type));
   const issues: Issue[] = [];
   const polys = new Map(furniture.map((f) => [f.id, footprintCorners(f)]));
   const poly = (f: Furniture) => polys.get(f.id)!;
@@ -145,7 +146,11 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
       const a = furniture[i];
       const b = furniture[j];
       const types = new Set([a.type, b.type]);
-      if (types.has("chair") && types.has("desk")) continue; // chairs tuck under desks
+      if (types.has("chair") && (types.has("desk") || types.has("worktable"))) continue; // chairs tuck under tables
+      if (types.has("plant") && types.has("worktable")) {
+        const plant = a.type === "plant" ? a : b, table = a.type === "worktable" ? a : b;
+        if (bottom(plant) >= furnitureSurfaceHeight(table) - 0.005) continue;
+      }
       if (!verticallyOverlap(a, b) || !polygonsOverlap(poly(a), poly(b))) continue;
       issues.push({
         key: `overlap:${a.id}:${b.id}`,

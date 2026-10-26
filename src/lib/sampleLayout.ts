@@ -1,8 +1,8 @@
-import type { Layout } from "../types";
+import type { LegacyLayout } from "../types";
 import { DEFAULT_PALETTE } from "./palettes";
 
 /** The layout a first-time visitor sees: a small bedroom-study, 4.2 × 3.6 m. */
-export const SAMPLE_LAYOUT: Layout = {
+export const SAMPLE_LAYOUT: LegacyLayout = {
   version: 1,
   projectName: "Bedroom Study",
   room: { width: 4.2, depth: 3.6, height: 2.7 },

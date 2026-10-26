@@ -1,3 +1,4 @@
+import { useMaterials } from "./RoomContext";
 import { Edges, Line } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { memo, useMemo, useState, type RefObject } from "react";
@@ -76,7 +77,8 @@ export const OpeningItem = memo(function OpeningItem({ opening: o, room, cut, se
   const gl = useThree((s) => s.gl);
   const [hovered, setHovered] = useState(false);
   const onPointerDown = useOpeningDrag(o.id);
-  const parts = useMemo(() => openingParts(o), [o]);
+  const materials = useMaterials();
+  const parts = useMemo(() => openingParts(o, materials), [o, materials]);
   const bounds = openingBounds(o);
   const outline = boxTransform(o.wall, { ...bounds, t0: bounds.t0 - 0.005 }, room);
 

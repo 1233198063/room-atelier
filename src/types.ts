@@ -18,7 +18,11 @@
  * position reads like a tape-measure: "120 cm from the left wall".
  */
 
-export type FurnitureType = "bed" | "desk" | "chair" | "cabinet" | "dresser" | "plant";
+export type FurnitureType = "bed" | "desk" | "chair" | "cabinet" | "dresser" | "plant"
+  | "bookcase" | "worktable" | "armchair" | "ottoman" | "rug" | "curtains";
+
+export type FurnitureColor = "wood" | "woodDark" | "fabric" | "accent" | "metal" | "pot" | "leaves";
+export type FurnitureColors = Partial<Record<FurnitureColor, string>>;
 
 export type Vec3 = [number, number, number];
 
@@ -40,6 +44,8 @@ export interface Furniture {
   /** Rotation around the vertical (Y) axis, in degrees, normalized to [0, 360). */
   rotation: number;
   dimensions: Dimensions;
+  /** Per-piece color overrides. Missing roles follow the room palette or model defaults. */
+  colors?: FurnitureColors;
 }
 
 export interface Room {
@@ -97,7 +103,7 @@ export interface Palette {
 export type PaletteColor = Exclude<keyof Palette, "id">;
 
 /** What we persist to localStorage. Versioned so the format can evolve. */
-export interface Layout {
+export interface LegacyLayout {
   version: 1;
   projectName: string;
   room: Room;
@@ -106,6 +112,38 @@ export interface Layout {
   openings: Opening[];
   /** Added later still; older saves load with the default palette. */
   palette: Palette;
+}
+
+/** Contents use coordinates local to the room, independent of its placement. */
+export interface RoomContents {
+  room: Room;
+  furniture: Furniture[];
+  openings: Opening[];
+  palette: Palette;
+}
+
+/** A furnished room that can be appended to a project without replacing its rooms. */
+export interface RoomTemplate extends RoomContents {
+  name: string;
+}
+
+export interface ProjectRoom extends RoomContents {
+  id: string;
+  name: string;
+  /** World position of the room's local back-left corner, in meters (X, Z). */
+  position: [number, number];
+  /** Rotation around Y, in degrees. */
+  rotation: number;
+}
+
+export type RoomDisplay = "single" | "all";
+
+export interface Layout {
+  version: 2;
+  projectName: string;
+  rooms: ProjectRoom[];
+  activeRoomId: string;
+  roomDisplay: RoomDisplay;
 }
 
 export type ViewMode = "perspective" | "top";

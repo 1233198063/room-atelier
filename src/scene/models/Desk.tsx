@@ -1,9 +1,10 @@
 import type { Dimensions } from "../../types";
-import { MATERIALS as M } from "../materials";
+import { useMaterials } from "../RoomContext";
 import { Box } from "./Box";
 
 /** The seated side (drawer front) faces local +Z. */
 export function Desk({ width: w, depth: d, height: h }: Dimensions) {
+  const M = useMaterials();
   const topT = 0.03;
   const leg = 0.04;
   const inset = 0.03;
