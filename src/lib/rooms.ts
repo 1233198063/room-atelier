@@ -4,7 +4,8 @@ import { WALL_T } from "./openings";
 
 export type Point2 = [number, number];
 export interface Bounds { minX: number; minZ: number; maxX: number; maxZ: number }
-export type Placement = Pick<ProjectRoom, "position" | "rotation">;
+/** Where a room is drawn. `elevation` lifts it to its level in the combined view. */
+export type Placement = Pick<ProjectRoom, "position" | "rotation" | "elevation">;
 
 export function localToWorld([x, z]: Point2, placement: Placement): Point2 {
   const a = degToRad(placement.rotation), c = Math.cos(a), s = Math.sin(a);
@@ -70,4 +71,44 @@ export function roomsOverlap(a: ProjectRoom, b: ProjectRoom): boolean {
     }
   }
   return true;
+}
+
+// ── Levels and room kinds ────────────────────────────────────────────────
+
+export const roomElevation = (r: Pick<ProjectRoom, "elevation">) => r.elevation ?? 0;
+export const roomKind = (r: Pick<ProjectRoom, "kind">) => r.kind ?? "indoor";
+/** Gardens and courtyards are open to the sky: no daylight or window rules. */
+export const isOutdoor = (r: Pick<ProjectRoom, "kind">) => roomKind(r) !== "indoor";
+
+/**
+ * Rooms that genuinely collide. A garden is ground the house stands on, so it
+ * never conflicts; stacked floors only conflict where their heights overlap.
+ */
+export function roomsConflict(a: ProjectRoom, b: ProjectRoom): boolean {
+  if (roomKind(a) === "garden" || roomKind(b) === "garden") return false;
+  const a0 = roomElevation(a), b0 = roomElevation(b);
+  if (a0 + a.room.height <= b0 + 1e-3 || b0 + b.room.height <= a0 + 1e-3) return false;
+  return roomsOverlap(a, b);
+}
+
+/**
+ * Openings a garden's ground must leave for the sunken courtyards below it,
+ * as polygons in the garden's local coordinates (walls included).
+ */
+export function gardenHoles(garden: ProjectRoom, rooms: ProjectRoom[]): Point2[][] {
+  if (roomKind(garden) !== "garden") return [];
+  return rooms
+    .filter((r) => r.id !== garden.id && roomKind(r) === "courtyard" && roomElevation(r) < roomElevation(garden) - 0.05
+      && roomsOverlap(garden, r))
+    .map((r) => roomCorners(r, true).map((p) => worldToLocal(p, garden)));
+}
+
+/**
+ * While editing an enclosed room in the combined view, rooms stacked above it
+ * would hide it from the camera, so they step out of the way.
+ */
+export function hiddenWhileEditing(rooms: ProjectRoom[], active: ProjectRoom): Set<string> {
+  if (roomKind(active) === "garden") return new Set();
+  const level = roomElevation(active) + 0.01;
+  return new Set(rooms.filter((r) => r.id !== active.id && roomElevation(r) > level && roomsOverlap(r, active)).map((r) => r.id));
 }

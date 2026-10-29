@@ -27,7 +27,8 @@ function framing(view: "perspective" | "top", room: ReturnType<typeof selectScen
   const distance = radius / Math.sin(Math.min(vFov, hFov) / 2);
   const azimuth = (35 * Math.PI) / 180; // swing from the front toward the right
   const elevation = (36 * Math.PI) / 180;
-  const target: P3 = [cx, 0.5, cz];
+  // Aim at mid-height when there are levels below ground, so a basement stays in frame.
+  const target: P3 = [cx, room.minY < 0 ? (room.minY + room.maxY) / 2 : 0.5, cz];
   return {
     position: [
       cx + distance * Math.cos(elevation) * Math.sin(azimuth),

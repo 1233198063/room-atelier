@@ -1,6 +1,6 @@
-import { MeshBasicMaterial, MeshStandardMaterial } from "three";
+import { DoubleSide, MeshBasicMaterial, MeshStandardMaterial } from "three";
 import type { FurnitureColors, Palette } from "../types";
-import { PLANT_COLORS } from "../lib/furnitureColors";
+import { CERAMIC_COLOR, PLANT_COLORS, STONE_COLOR } from "../lib/furnitureColors";
 
 /**
  * Material templates. RoomProvider clones one set per room, so furniture
@@ -22,6 +22,21 @@ export const MATERIALS = {
   leafDark: new MeshStandardMaterial({ color: "#5f7d51", roughness: 0.85, flatShading: true }),
   terracotta: new MeshStandardMaterial({ color: PLANT_COLORS.pot, roughness: 0.9 }),
   soil: new MeshStandardMaterial({ color: "#5b4636", roughness: 1 }),
+  stone: new MeshStandardMaterial({ color: STONE_COLOR, roughness: 0.85 }),
+  /** Same stone with a slab pattern; the Paving model attaches the texture on first use. */
+  paving: new MeshStandardMaterial({ color: STONE_COLOR, roughness: 0.9 }),
+  /** Glazed porcelain and white enamel: toilets, basins, tubs, appliance bodies. */
+  ceramic: new MeshStandardMaterial({ color: CERAMIC_COLOR, roughness: 0.28 }),
+  /** The inside of a basin or tub: the same glaze a little in shadow. */
+  ceramicShade: new MeshStandardMaterial({ color: "#d6d3cc", roughness: 0.3 }),
+  /** Brushed stainless steel: sinks, taps, shower posts. Fixed, like real fittings. */
+  steel: new MeshStandardMaterial({ color: "#c9ccce", roughness: 0.3, metalness: 0.85 }),
+  /** A switched-off screen and a ceramic hob: dark glass with a soft reflection. */
+  blackGlass: new MeshStandardMaterial({ color: "#16181b", roughness: 0.12, metalness: 0.4 }),
+  /** Wrought iron: balusters and screen casings. */
+  iron: new MeshStandardMaterial({ color: "#2f2a26", roughness: 0.55, metalness: 0.4 }),
+  /** Lamp shades glow from inside; the shade color tints the glow. */
+  shade: new MeshStandardMaterial({ color: "#f6ead5", roughness: 0.9, emissive: "#ffd9a0", emissiveIntensity: 0.55, side: DoubleSide }),
   /** Painted door casing — a warm white a shade off the walls. */
   trim: new MeshStandardMaterial({ color: "#efe8dc", roughness: 0.6 }),
   glass: new MeshStandardMaterial({
@@ -52,6 +67,7 @@ export function applyPalette(p: Palette, materials = MATERIALS) {
   materials.cushion.color.set(p.fabric).lerp(materials.oak.color, 0.35);
   materials.throw.color.set(p.accent);
   materials.brass.color.set(p.metal);
+  materials.shade.color.set(p.fabric).lerp(MATERIALS.shade.color, 0.6);
 }
 
 /** Reapply inherited colors first, so clearing an override never leaves an old tint behind. */
@@ -60,6 +76,12 @@ export function applyFurnitureColors(palette: Palette, colors: FurnitureColors, 
   // A chosen cushion color is exact; the default keeps the room's original fabric/wood mix.
   if (colors.fabric) materials.cushion.color.set(colors.fabric);
   materials.terracotta.color.set(colors.pot ?? PLANT_COLORS.pot);
+  materials.stone.color.set(colors.stone ?? STONE_COLOR);
+  materials.ceramic.color.set(colors.ceramic ?? CERAMIC_COLOR);
+  if (colors.ceramic) materials.ceramicShade.color.copy(materials.ceramic.color).multiplyScalar(0.86);
+  else materials.ceramicShade.color.copy(MATERIALS.ceramicShade.color);
+  materials.paving.color.copy(materials.stone.color);
+  if (colors.fabric) materials.shade.color.set(colors.fabric);
   materials.leaf.color.set(colors.leaves ?? PLANT_COLORS.leaves);
   if (colors.leaves) materials.leafDark.color.set(colors.leaves).multiplyScalar(0.72);
   else materials.leafDark.color.copy(MATERIALS.leafDark.color);

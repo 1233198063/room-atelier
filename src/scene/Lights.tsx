@@ -23,8 +23,9 @@ export function Lights() {
   const rooms = useEditor((s) => s.rooms);
   const activeId = useEditor((s) => s.activeRoomId);
   const display = useEditor((s) => s.roomDisplay);
-  const room = useMemo(() => selectSceneBounds(useEditor.getState()), [rooms, activeId, display]);
   const mode = useEditor((s) => s.mode);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const room = useMemo(() => selectSceneBounds(useEditor.getState()), [rooms, activeId, display, mode]);
   const plan = useEditor((s) => s.view === "top");
   const sun = useRef<DirectionalLight>(null);
   const p = PRESETS[mode];
@@ -56,7 +57,7 @@ export function Lights() {
         ref={sun}
         // In plan view the sun goes (almost) overhead so shadows tuck under the furniture
         // instead of smearing across the drawing.
-        position={plan ? [cx + 0.4, room.height + 12, cz + 0.8] : [cx + span * 0.8, room.height + span * 1.2, cz + span * 0.45]}
+        position={plan ? [cx + 0.4, room.maxY + 12, cz + 0.8] : [cx + span * 0.8, room.maxY + span * 1.2, cz + span * 0.45]}
         color={p.sun}
         intensity={p.sunIntensity}
         castShadow
@@ -65,7 +66,7 @@ export function Lights() {
         shadow-bias={-0.0004}
         shadow-normalBias={0.02}
         shadow-camera-near={0.5}
-        shadow-camera-far={span * 4 + 10}
+        shadow-camera-far={span * 4 + room.height + 10}
       />
     </>
   );

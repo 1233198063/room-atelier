@@ -1,3 +1,4 @@
+import { useLength, useT } from "../i18n";
 import { degToRad, toCm } from "../lib/geometry";
 import { furniturePlanColor } from "../lib/furnitureColors";
 import { openingSpan, runsAlongX, wallToWorld } from "../lib/openings";
@@ -71,6 +72,8 @@ export function PlanMinimap() {
   const palette = useEditor((s) => selectActiveRoom(s).palette);
   const selectedId = useEditor((s) => s.selectedId);
   const select = useEditor((s) => s.select);
+  const t = useT();
+  const len = useLength();
   const pad = 14;
   const W = toCm(room.width);
   const D = toCm(room.depth);
@@ -80,7 +83,7 @@ export function PlanMinimap() {
       className="minimap"
       viewBox={`${-pad} ${-pad} ${W + pad * 2} ${D + pad * 2}`}
       role="img"
-      aria-label={`Floor plan, ${W} by ${D} centimeters`}
+      aria-label={t.minimap.aria(len.size(room.width, room.depth))}
     >
       <rect x={-BAND} y={-BAND} width={W + BAND * 2} height={D + BAND * 2} className="minimap__wall" />
       <rect x={0} y={0} width={W} height={D} className="minimap__floor" />

@@ -1,4 +1,6 @@
 import { useEffect } from "react";
+import { getLengthUnit } from "../i18n";
+import { nudgeSteps } from "../lib/units";
 import { runsAlongX } from "../lib/openings";
 import { saveNow } from "../store/autosave";
 import { selectActiveRoom, useEditor } from "../store/editorStore";
@@ -22,6 +24,8 @@ export function useKeyboardShortcuts() {
         saveNow();
         return;
       }
+      // A dialog has the keyboard to itself.
+      if (document.querySelector('[aria-modal="true"]')) return;
       // Leave typing alone — inputs handle their own keys (including their own undo).
       const target = e.target as HTMLElement | null;
       if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
@@ -79,7 +83,7 @@ export function useKeyboardShortcuts() {
           const [dx, dz] = NUDGE[e.key];
           const delta = runsAlongX(opening.wall) ? dx : dz;
           if (delta === 0) return;
-          const step = e.shiftKey ? 0.1 : 0.01;
+          const step = nudgeSteps(getLengthUnit())[e.shiftKey ? 1 : 0];
           s.updateOpening(opening.id, { offset: opening.offset + delta * step }, { coalesceKey: `nudge:${opening.id}` });
         }
         return;
@@ -92,7 +96,7 @@ export function useKeyboardShortcuts() {
       } else if (e.key in NUDGE) {
         e.preventDefault();
         const [dx, dz] = NUDGE[e.key];
-        const step = e.shiftKey ? 0.1 : 0.01;
+        const step = nudgeSteps(getLengthUnit())[e.shiftKey ? 1 : 0];
         const [x, y, z] = selected.position;
         s.updateFurniture(
           selected.id,

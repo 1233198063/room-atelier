@@ -369,3 +369,40 @@ describe("editor store", () => {
     expect(active().palette.id).toBe("warm-oak");
   });
 });
+
+describe("multi-level projects", () => {
+  it("adds a whole project beside the existing rooms in one undo step, keeping relative placement", () => {
+    const before = get().rooms.length;
+    get().addProject({ name: "Pair", rooms: [
+      { name: "Garden", kind: "garden", position: [0, 0], rotation: 0, room: { width: 10, depth: 8, height: 6 },
+        furniture: [{ id: "t", type: "tree", name: "Tree", position: [3, 0, 3], rotation: 0, dimensions: { width: 2, depth: 2, height: 4 } }],
+        openings: [], palette: active().palette },
+      { name: "Cellar", elevation: -3, position: [2, 1], rotation: 0, room: { width: 4, depth: 3, height: 2.8 },
+        furniture: [], openings: [], palette: active().palette },
+    ] });
+    const [garden, cellar] = get().rooms.slice(before);
+    expect(get().roomDisplay).toBe("all");
+    expect(get().activeRoomId).toBe(garden.id);
+    expect(garden.kind).toBe("garden");
+    expect(cellar.elevation).toBe(-3);
+    expect(cellar.position[0] - garden.position[0]).toBeCloseTo(2);
+    expect(cellar.position[1] - garden.position[1]).toBeCloseTo(1);
+    expect(garden.furniture[0].id).not.toBe("t");
+    expect(selectSceneBounds(get()).minY).toBe(-3);
+    get().undo();
+    expect(get().rooms).toHaveLength(before);
+  });
+
+  it("validates room structure edits and stores the defaults as absent", () => {
+    const id = active().id;
+    get().updateRoom(id, { elevation: -2.5, kind: "courtyard", roof: "hip" });
+    expect(active()).toMatchObject({ elevation: -2.5, kind: "courtyard", roof: "hip" });
+    get().updateRoom(id, { elevation: Number.NaN, kind: "attic" as never });
+    expect(active()).toMatchObject({ elevation: -2.5, kind: "courtyard" });
+    get().updateRoom(id, { elevation: 0, kind: "indoor", roof: "none" });
+    expect(active()).not.toHaveProperty("elevation");
+    expect(active()).not.toHaveProperty("kind");
+    expect(active()).not.toHaveProperty("roof");
+    expect(parseLayout(JSON.parse(JSON.stringify(selectLayout(get()))))).toEqual(selectLayout(get()));
+  });
+});

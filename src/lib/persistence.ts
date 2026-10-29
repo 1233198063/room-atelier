@@ -1,9 +1,10 @@
-import type { Furniture, Layout, Opening, Palette, ProjectRoom, Room, RoomContents, Wall } from "../types";
+import type { Furniture, Layout, Opening, Palette, ProjectRoom, Room, RoomContents, RoomStructure, Wall } from "../types";
 import { CATALOG, ROOM_LIMITS } from "./catalog";
 import { clamp, normalizeDeg } from "./geometry";
 import { OPENING_CATALOG, WALLS } from "./openings";
 import { DEFAULT_PALETTE, isHexColor, PALETTE_COLORS } from "./palettes";
 import { sanitizeFurnitureColors } from "./furnitureColors";
+import { furnitureLabel, openingLabel } from "../i18n/names";
 
 export const STORAGE_KEY = "room-atelier:layout:v2";
 export const LEGACY_STORAGE_KEY = "room-atelier:layout:v1";
@@ -36,7 +37,7 @@ function parseFurniture(raw: unknown): Furniture | null {
     id,
     type: entry.type,
     ...(colors ? { colors } : {}),
-    name: typeof name === "string" && name.trim() ? name : entry.label,
+    name: typeof name === "string" && name.trim() ? name : furnitureLabel(entry.type, "en"),
     position: [position[0], position[1], position[2]],
     rotation: normalizeDeg(rotation),
     dimensions: {
@@ -58,7 +59,7 @@ function parseOpening(raw: unknown): Opening | null {
   return {
     id,
     type: entry.type,
-    name: typeof name === "string" && name.trim() ? name : entry.label,
+    name: typeof name === "string" && name.trim() ? name : openingLabel(entry.type, "en"),
     wall: wall as Wall,
     offset,
     width: clamp(width, entry.min.width, entry.max.width),
@@ -72,7 +73,7 @@ function parseOpening(raw: unknown): Opening | null {
 function parsePalette(raw: unknown): Palette {
   if (!isObject(raw)) return DEFAULT_PALETTE;
   const palette: Palette = { ...DEFAULT_PALETTE, id: typeof raw.id === "string" ? raw.id : "custom" };
-  for (const { key } of PALETTE_COLORS) {
+  for (const key of PALETTE_COLORS) {
     const value = raw[key];
     if (isHexColor(value)) palette[key] = value.toLowerCase();
   }
@@ -95,6 +96,28 @@ function parseContents(raw: Record<string, unknown>): RoomContents | null {
   return { room, furniture, openings, palette: parsePalette(raw.palette) };
 }
 
+export const ELEVATION_LIMIT = 20;
+const ROOM_KINDS = ["indoor", "garden", "courtyard"] as const;
+const ROOF_TYPES = ["none", "hip"] as const;
+
+/** Only non-default values are kept, so plain rooms save exactly as before. */
+/** Valid, distinct sides in wall order; undefined when none are open. */
+export function normalizeOpenWalls(raw: unknown): Wall[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const open = WALLS.filter((w) => raw.includes(w));
+  return open.length ? open : undefined;
+}
+
+export function parseStructure(raw: Record<string, unknown>): RoomStructure {
+  const structure: RoomStructure = {};
+  if (isNum(raw.elevation) && raw.elevation !== 0) structure.elevation = clamp(raw.elevation, -ELEVATION_LIMIT, ELEVATION_LIMIT);
+  if (ROOM_KINDS.includes(raw.kind as never) && raw.kind !== "indoor") structure.kind = raw.kind as RoomStructure["kind"];
+  if (ROOF_TYPES.includes(raw.roof as never) && raw.roof !== "none") structure.roof = raw.roof as RoomStructure["roof"];
+  const openWalls = normalizeOpenWalls(raw.openWalls);
+  if (openWalls) structure.openWalls = openWalls;
+  return structure;
+}
+
 export function parseLayout(raw: unknown): Layout | null {
   if (!isObject(raw) || (raw.version !== 1 && raw.version !== 2)) return null;
   const projectName = typeof raw.projectName === "string" && raw.projectName.trim() ? raw.projectName : "Untitled room";
@@ -113,7 +136,7 @@ export function parseLayout(raw: unknown): Layout | null {
       ids.add(r.id);
       const position: [number, number] = Array.isArray(r.position) && r.position.length === 2 && r.position.every(isNum)
         ? [clamp(r.position[0], -1000, 1000), clamp(r.position[1], -1000, 1000)] : [0, 0];
-      return [{ ...contents, id: r.id, name: typeof r.name === "string" && r.name.trim() ? r.name : "Room",
+      return [{ ...contents, ...parseStructure(r), id: r.id, name: typeof r.name === "string" && r.name.trim() ? r.name : "Room",
         position, rotation: isNum(r.rotation) ? normalizeDeg(r.rotation) : 0 }];
     });
   }
@@ -130,7 +153,8 @@ export function parseLayout(raw: unknown): Layout | null {
   });
   const activeRoomId = typeof raw.activeRoomId === "string" && rooms.some((r) => r.id === raw.activeRoomId)
     ? raw.activeRoomId : rooms[0].id;
-  return { version: 2, projectName, rooms, activeRoomId, roomDisplay: raw.roomDisplay === "all" ? "all" : "single" };
+  return { version: 2, projectName, rooms, activeRoomId, roomDisplay: raw.roomDisplay === "all" ? "all" : "single",
+    ...(raw.wallView === "exterior" ? { wallView: "exterior" as const } : {}) };
 }
 
 function storage(): Storage | null {

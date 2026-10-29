@@ -1,4 +1,6 @@
 import { useId, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useLengthUnit } from "../../i18n";
+import { lengthValue, parseFieldInput, UNIT_LABELS } from "../../lib/units";
 
 export interface ChangeMeta {
   /** Part of a continuous gesture (label scrubbing) — don't record undo history yet. */
@@ -11,8 +13,9 @@ interface NumberFieldProps {
   label: string;
   /** Full name for screen readers and the tooltip. */
   title: string;
+  /** Lengths are passed in centimeters whatever the display unit; angles in degrees. */
   value: number;
-  unit: "cm" | "°";
+  unit: "length" | "°";
   min?: number;
   max?: number;
   /** Arrow-key / scrub increment. Shift multiplies by 10. */
@@ -22,33 +25,7 @@ interface NumberFieldProps {
   onScrubEnd?: () => void;
 }
 
-const UNIT_TO_CM: Record<string, number> = { mm: 0.1, cm: 1, m: 100 };
-
-/**
- * Parse what the user typed. Accepts unit suffixes and simple sums, like a CAD
- * command line: "120", "1.2m", "450mm", "120+35", "2m-15cm", "90°".
- */
-export function parseFieldInput(text: string, unit: "cm" | "°"): number | null {
-  const cleaned = text.trim().toLowerCase().replace(/,/g, ".").replace(/\s+/g, "");
-  if (!cleaned) return null;
-  const terms = cleaned.match(/[+-]?[^+-]+/g);
-  if (!terms || terms.join("") !== cleaned) return null;
-  let total = 0;
-  for (const term of terms) {
-    const m = term.match(/^([+-]?(?:\d+\.?\d*|\.\d+))(mm|cm|m|°|deg)?$/);
-    if (!m) return null;
-    const n = parseFloat(m[1]);
-    const suffix = m[2];
-    if (unit === "cm") {
-      if (suffix === "°" || suffix === "deg") return null;
-      total += n * (suffix ? UNIT_TO_CM[suffix] : 1);
-    } else {
-      if (suffix && suffix !== "°" && suffix !== "deg") return null;
-      total += n;
-    }
-  }
-  return Number.isFinite(total) ? total : null;
-}
+export { parseFieldInput } from "../../lib/units";
 
 const format = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1));
 
@@ -71,6 +48,10 @@ export function NumberField({
   onScrubEnd,
 }: NumberFieldProps) {
   const id = useId();
+  const lengthUnit = useLengthUnit();
+  const shown = (v: number) => (unit === "length" ? lengthValue(v / 100, lengthUnit) : format(v));
+  // Arrow keys and scrubbing move a whole inch at a time when feet and inches are on show.
+  const stepBy = unit === "length" && lengthUnit === "ft" ? step * 2.54 : step;
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,7 +63,7 @@ export function NumberField({
 
   const commit = () => {
     if (draft === null) return;
-    const parsed = parseFieldInput(draft, unit);
+    const parsed = parseFieldInput(draft, unit, lengthUnit);
     if (parsed === null) {
       setInvalid(true);
       return;
@@ -103,7 +84,7 @@ export function NumberField({
       inputRef.current?.blur();
     } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
       e.preventDefault();
-      const delta = (e.key === "ArrowUp" ? step : -step) * (e.shiftKey ? 10 : 1);
+      const delta = (e.key === "ArrowUp" ? stepBy : -stepBy) * (e.shiftKey ? 10 : 1);
       const next = clampValue(value + delta);
       setDraft(null);
       setInvalid(false);
@@ -129,7 +110,7 @@ export function NumberField({
         onScrubStart?.();
         document.body.classList.add("is-scrubbing");
       }
-      const next = clampValue(startValue + Math.round(px / 4) * step * (ev.shiftKey ? 10 : 1));
+      const next = clampValue(startValue + Math.round(px / 4) * stepBy * (ev.shiftKey ? 10 : 1));
       onChangeRef.current(next, { transient: true, coalesce: false });
     };
     const up = () => {
@@ -159,7 +140,7 @@ export function NumberField({
         spellCheck={false}
         aria-label={title}
         aria-invalid={invalid}
-        value={draft ?? format(value)}
+        value={draft ?? shown(value)}
         onFocus={(e) => e.currentTarget.select()}
         onChange={(e) => {
           setDraft(e.target.value);
@@ -172,7 +153,7 @@ export function NumberField({
         }}
         onKeyDown={onKeyDown}
       />
-      <span className="field__unit">{unit}</span>
+      {!(unit === "length" && lengthUnit === "ft") && <span className="field__unit">{unit === "length" ? UNIT_LABELS[lengthUnit] : unit}</span>}
     </div>
   );
 }

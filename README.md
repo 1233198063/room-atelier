@@ -12,7 +12,19 @@ A browser-based 3D room planner. In **Edit** mode it behaves like a small CAD to
 
 ## Features
 
+- **中文 / English.** The button left of Undo switches the whole interface; a page is never half one language and half the other. The choice is remembered per browser (first visit follows the browser language) and follows across open tabs. Names the app made up (library labels such as "Chair 2", and every piece in the bundled templates) are shown in the current language; a name you type stays as you typed it. Layout-check and color tips are worded in the current language too.
+- **Import a floor plan.** **Import a floor plan** (under the room list) builds rooms from a plan image: choose it, drop it or paste it.
+  - **AI reading** (needs the server, see below): Claude reads the rooms with their names and kinds (including open-plan zones with no walls between them), the sizes printed on the plan (`11'X11'`, `3600×4200`), dimension lines, and doors and windows. Its boxes are then moved onto the exact wall faces found in the image, and the printed sizes set the scale, so there is nothing to measure. Open-plan zones meet on a shared edge and are built without a wall there; doors and windows go into the walls they sit in (a door between two rooms into both).
+  - **Local reading** (always, and the fallback when AI isn't available): walls are thick dark bands, so labels, dimension lines, door arcs and furniture symbols don't count, and windows drawn as thin lines don't open a room up. Only areas bounded on all four sides are taken as rooms.
+  - **Check and adjust**: click inside a room to find it, drag to draw one, drag a selected room's edges, rename it, or remove it with Delete. To set or correct the scale, drag along a dimension and type it as printed (feet and inches in two boxes when the unit is ft-in). Areas under 60 cm across are skipped rather than stretched, areas under 1 m² are flagged as likely shafts or closets, and a scale that makes the plan implausibly small or large is called out.
+  - **Create** adds rectangular rooms at their measured inside sizes and their places on the plan, beside the current rooms or replacing them (undoable). With AI reading, the image is sent to Anthropic's API; otherwise it stays in the browser. It is never saved.
+- **Open sides.** An indoor room can leave out the wall on any side (**No wall on** in room settings), for open-plan living, dining and kitchen. Floor-plan import sets these for you.
+- **Length units.** The ruler menu in the toolbar shows every length in mm, cm, m or ft-in: fields, dimension lines, sizes in the library and layout-check messages. ft-in writes lengths as plans do (12' 1", never 145 in); floor areas are in square feet, the snap grid offers ½, 1 and 6 in, and arrow keys and field steps move 1 in (Shift: 10 in). A plain number you type is read in the unit on show (feet with ft-in, where `12 1` is 12' 1"); `1.2m`, `450mm`, `36"`, `5'6"`, `12'1''`, `5ft 6in`, curly or full-width quotes and sums work in any unit. Product listings in inches and feet (`84" W x 38" D x 34" H`, `5 ft x 8 ft`) are read too. Saves are unaffected (data stays in meters), and the choice is remembered per browser.
+- **A library by room.** Cards come at common retail sizes (mainland China) and are grouped into Living room, Dining, Bedroom, Study, Kitchen, Bathroom, Plants, Structure and Garden, with filter chips at the top. New models: L-shaped corner sofa, round pedestal table, wall-hung TV, office chair, fridge (side-by-side from 80 cm wide), front-loading washer, kitchen counter (sink from 1.2 m, hob from 1.6 m), toilet, vanity, bathtub and corner shower. Sanitaryware and appliances have their own **Ceramic** color. The layout check wants about 60 cm in front of fridge and vanity doors and a washer's door, 80 cm in front of a kitchen counter (counters meeting in an L don't count against each other) and 50 cm in front of a toilet.
+- **Add from a product.** Paste a shop listing's title and size into **Add from a product** (top of the library). Keywords pick the model ("转角沙发", "office chair", "1.8米床"…) and the size is read from labeled values (`长220 宽95 高85cm`, `W220 D95 H85`), a W×D×H triple (`120*60*75cm`, `2000×1800×1000mm`), a pair, or a TV's inches; sizes without a unit are read as mm, cm or m from their magnitude. Anything missing comes from the matching library card. Add a product photo and its main colors, with the plain backdrop left out, go to the model's first two color roles. You can change the model, name and size before adding. It all runs in the browser; nothing is uploaded.
 - **Photo-inspired sunlit study.** The supplied reference is available as **阳光里的墨香与旅行手账** in the Rooms sidebar, or through `/?room=sunlit-study`. Opening that link appends a furnished room and consumes the URL command so refreshing does not add duplicates. Existing rooms are preserved, and the addition is undoable. Its 4.8 × 5.8 × 2.9 m dimensions are estimates from the image. The editable interpretation includes full-height bookcases, a central craft table, a calligraphy workbench, a reading chair and ottoman, a patterned rug, blue curtains and plants; fine artwork, outdoor scenery and the pet are not reproduced.
+- **Villa with an underground library.** **地中海别墅 · 地下图书馆与花园** in the Rooms sidebar adds six spaces at once, beside any existing rooms: a 44 × 42 m garden, a two-storey house with a hip roof, a single-storey kitchen wing, a 14 × 9 m library about 6 m tall two floors below ground, and a sunken courtyard on the same level. The library has a gallery reached by a curved stair, double-height bookcases, a sofa group on a large rug, a projection screen, a craft table and an easel. Its glass wall faces the courtyard, which has a long stone stair up to the lawn. The garden has the drive and forecourt, the terrace and outdoor dining, a kitchen garden, rose and lavender beds, and boundary olives and cypresses. The layout follows the supplied concept renders, site plan and section, with estimated dimensions. The library sits under the terrace with its glass facing the courtyard, as in the exterior render. Arched openings, interior partitions on the upper floor and climbing plants are not reproduced.
+- **Levels, gardens and roofs.** Each room has a floor level (**Lvl** in Arrange rooms; negative is underground), a type (**Indoor room**, **Garden · no walls** or **Open courtyard**) and an optional **terracotta hip roof**. Floors stack in the Together view. A garden's lawn opens above any courtyard below it. While you edit an enclosed room, the rooms stacked above it step aside. **Exterior** (Together view, bottom right) shows the other rooms closed with their roofs; **Cutaway** opens every room. Stacked floors and rooms standing in a garden are not flagged as overlaps. Gardens and courtyards skip the window and daylight tips.
 - **Multiple rooms.** Add and name rooms with independent dimensions, furniture, openings and color schemes. Switch between **Single room** and **Together** in either 3D or Plan view. In Together mode, drag rooms in the assembly plan, enter X/Z coordinates and rotation, or join a room to any side of another room. Exterior edges snap together; hold Alt for free placement. Overlapping rooms are flagged. Room creation, placement and deletion support undo/redo and autosave, and existing single-room saves migrate automatically.
 - **Individual furniture colors.** Select a piece and use **Colors** in its properties to choose body, legs/base, textiles or hardware colors, depending on the model. Plants have pot and leaf colors too. Pick a color or enter a six-digit hex code. Custom colors belong to that piece, survive room-style changes, and are copied when duplicating; **Use defaults** returns it to the current room palette and model defaults. Color edits support undo/redo and autosave, and older saves keep their existing appearance.
 - **Real-size rooms.** Enter width, depth and height in cm and the floor and walls are generated to match. Shrinking the room pulls furniture back inside.
@@ -26,7 +38,7 @@ A browser-based 3D room planner. In **Edit** mode it behaves like a small CAD to
 - **Precise properties.** Position, elevation, rotation and size are all editable in cm. Fields accept units and simple sums (`1.2m`, `450mm`, `120+35`). You can also drag a field's label to scrub the value, or use ↑/↓ to step it.
 - **Measure and align.** The selected piece shows dimension lines to all four walls. A selected door or window shows a chain dimension along its wall (corner → opening → corner). There's a clearance readout and a live SVG plan, plus one-click alignment to any wall or to the room's center line.
 - **Undo / redo.** One drag or one scrub counts as one undo step, and a burst of arrow-key nudges merges into one step.
-- **Save and load.** Changes autosave to `localStorage` (debounced), and Ctrl+S saves right away. Saved data is checked on load, so a hand-edited or corrupted save falls back safely.
+- **Save and load.** Changes autosave to `localStorage` (debounced), and Ctrl+S saves right away. Tabs open on the same project stay in sync, so a stale tab can't overwrite newer edits. Saves belong to the address, so the dev server always uses port 5180. Saved data is checked on load, so a hand-edited or corrupted save falls back safely.
 
 Out of scope for v1: AI layout, accounts, backend, photoreal rendering, collision detection (furniture can overlap a window or a door swing), CAD import.
 
@@ -34,10 +46,14 @@ Out of scope for v1: AI layout, accounts, backend, photoreal rendering, collisio
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm test         # unit tests (geometry, persistence, store, input parsing)
-npm run build    # type-check + production build
+npm run dev          # the app, http://localhost:5180
+npm run dev:server   # the API for AI floor-plan reading, http://localhost:5181 (Vite proxies /api to it)
+npm test             # unit tests
+npm run build        # type-check (app and server) + production build
+npm start            # production: one server for the built app and the API
 ```
+
+AI floor-plan reading needs an Anthropic API key on the server: copy `.env.example` to `.env` and set `ANTHROPIC_API_KEY`. Plans are read by Claude Opus 5 (`FLOOR_PLAN_MODEL` to change it); a request declined by the model's safety classifiers is retried on Anthropic's recommended fallback model. Each plan is one request with the image (roughly a few US cents). Without a key the import still works with the local reader and says why. `FLOOR_PLAN_MOCK=reading.json` answers every request with a saved reading, for working on the app without API calls.
 
 ### Working with multiple rooms
 
@@ -45,6 +61,8 @@ npm run build    # type-check + production build
 2. Choose **Single room** to view only that room. Choose **Together** to see the assembled project. Both work in Edit and Preview modes.
 3. In Together/Edit mode, deselect furniture to see **Arrange rooms**. Drag any room in the small plan, use the X/Z and rotation fields, or choose a neighbor and click Left/Back/Front/Right. Focus a room in the small plan and use arrow keys for 1 cm nudges, or Shift+arrows for 10 cm.
 4. Use **Frame all** (F) after precise placement to fit the entire layout. Each room keeps its furniture and openings in local coordinates when moved or rotated.
+
+To add the villa, click its card below the room list. The garden is selected first, so the whole site is visible; pick the library in the sidebar and switch to **Single room** to work inside it. Library pieces upstairs stand on the gallery deck, 1 m below the gallery's total height. The new furniture (sofa, table, lamp, easel, projection screen, framed art), structure (gallery, curved stair, stairs) and garden pieces (tree, shrub, paving) are in the furniture library. A table lower than 55 cm becomes a stone coffee table. A shrub lower than 90 cm flowers in its accent color. A tree narrower than 30% of its height grows as a cypress. Paving, galleries, wall-hung pieces and tree canopies don't block circulation.
 
 To add the reference study, click its image card below the room list. The new bookcase, craft table, armchair, ottoman, rug and curtain models also appear in the furniture library and support individual colors. Craft-table height includes its desktop tools; plants sit on the tabletop 16 cm below that total height. Rugs and curtains are excluded from circulation checks and floor-coverage totals.
 
@@ -81,23 +99,42 @@ Dragging a chair in the canvas and typing its X coordinate in the panel are the 
 ### Project structure
 
 ```
+server/
+  index.ts                 HTTP server: POST /api/floor-plan, and the built app in production
+  floorPlanAi.ts           the Claude request (structured output, refusal fallback)
+  floorPlanSchema.ts       what Claude reports about a plan, and the prompt
 src/
   types.ts                 data model (Furniture, Room, Layout)
+  i18n/
+    messages.ts            every interface string, in English and Chinese
+    names.ts               translations of generated and template names
+    index.ts               language store, useT / useName hooks
+    units.ts               length-unit store, useLength hook
   lib/
-    catalog.ts             furniture types, default sizes, limits
+    catalog.ts             furniture types, default sizes, limits, the library by room
+    productImport.ts       reading a model and size from pasted product text
+    floorPlan.ts           finding walls and rooms in a floor plan image; rooms, doors and windows for the editor
+    floorPlanAi.ts         Claude's reading → rooms snapped to walls, scale from printed sizes
+    units.ts               length units: formatting and conversion
+    imageColors.ts         main colors of a product photo
     geometry.ts            footprint math, clamping, snapping, alignment
     polygon.ts             2D overlap (separating axis test) and ray casting on the floor plane
     layoutChecks.ts        the layout and color check rules
     palettes.ts            palette presets, color contrast math, palette suggestions
     openings.ts            door/window catalog, wall coordinates, splitting walls around openings
     persistence.ts         localStorage load/save with validation
+    rooms.ts               room placement, overlap, levels, garden openings
+    roof.ts                hip roof geometry
+    villaTemplate.ts       the villa, library, courtyard and garden
   store/
     editorStore.ts         Zustand store: state, actions, undo/redo
     autosave.ts            debounced persistence
   scene/                   everything inside <Canvas>
     Viewport.tsx           canvas setup
     CameraRig.tsx          perspective / plan cameras + OrbitControls
-    RoomShell.tsx          floor + walls, cutaway animation
+    RoomShell.tsx          floor + walls, cutaway animation; garden ground and courtyard paving
+    Roof.tsx               terracotta hip roof, ridge caps, chimney
+    paintings.ts           generated landscape paintings and roof tiles
     ClippedBox.tsx         a wall piece that clips itself to the wall's current height
     wallParts.ts           frame, glass, leaf and handle boxes for each opening
     OpeningItem.tsx        one door/window: parts, hit box, swing arc, plan symbol
@@ -106,7 +143,7 @@ src/
     useOpeningDrag.ts      raycast-to-wall dragging
     Measurements.tsx       CAD-style dimension lines
     ScreenLabel.tsx        HTML label pinned to a 3D point
-    models/                parametric Bed, Desk, Chair, Cabinet, Dresser, Plant
+    models/                parametric furniture, kitchen and bathroom fittings, structure (gallery, stairs) and garden models
   components/              toolbar, library, properties panel, style picker, SVG plan
 ```
 

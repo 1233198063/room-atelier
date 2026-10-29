@@ -4,6 +4,15 @@ import { SAMPLE_LAYOUT } from "./sampleLayout";
 
 afterEach(() => vi.unstubAllGlobals());
 
+describe("open walls", () => {
+  it("keeps valid sides in wall order and drops the rest", async () => {
+    const { normalizeOpenWalls } = await import("./persistence");
+    expect(normalizeOpenWalls(["front", "back", "front", "up"])).toEqual(["back", "front"]);
+    expect(normalizeOpenWalls([])).toBeUndefined();
+    expect(normalizeOpenWalls("left")).toBeUndefined();
+  });
+});
+
 describe("parseLayout", () => {
   it("round-trips individual furniture colors in old and new project formats", () => {
     const raw = { ...SAMPLE_LAYOUT, furniture: [
@@ -102,7 +111,7 @@ describe("parseLayout", () => {
       ...SAMPLE_LAYOUT,
       furniture: [
         SAMPLE_LAYOUT.furniture[0],
-        { id: "x", type: "sofa", position: [0, 0, 0], rotation: 0, dimensions: { width: 1, height: 1, depth: 1 } },
+        { id: "x", type: "piano", position: [0, 0, 0], rotation: 0, dimensions: { width: 1, height: 1, depth: 1 } },
         { id: "y", type: "chair", position: [0, 0], rotation: 0, dimensions: { width: 1, height: 1, depth: 1 } },
       ],
     };
@@ -120,5 +129,24 @@ describe("parseLayout", () => {
     });
     expect(parsed?.projectName).toBe("Untitled room");
     expect(parsed?.rooms[0].furniture[0]).toMatchObject({ name: "Chair", rotation: 270, dimensions: { width: 0.9 } });
+  });
+});
+
+describe("multi-level structure", () => {
+  it("keeps valid levels, kinds and roofs and stores defaults as absent", () => {
+    const base = parseLayout(SAMPLE_LAYOUT)!;
+    const r = base.rooms[0];
+    const parsed = parseLayout({ ...base, wallView: "exterior", rooms: [
+      { ...r, elevation: -6.4, kind: "courtyard", roof: "hip" },
+      { ...r, id: "b", furniture: [], openings: [], elevation: 99, kind: "attic", roof: "dome" },
+      { ...r, id: "c", furniture: [], openings: [], elevation: 0, kind: "indoor", roof: "none" },
+    ] })!;
+    expect(parsed.wallView).toBe("exterior");
+    expect(parsed.rooms[0]).toMatchObject({ elevation: -6.4, kind: "courtyard", roof: "hip" });
+    expect(parsed.rooms[1].elevation).toBe(20);
+    expect(parsed.rooms[1]).not.toHaveProperty("kind");
+    expect(parsed.rooms[1]).not.toHaveProperty("roof");
+    expect(Object.keys(parsed.rooms[2])).not.toEqual(expect.arrayContaining(["elevation"]));
+    expect(parseLayout(base)).not.toHaveProperty("wallView");
   });
 });

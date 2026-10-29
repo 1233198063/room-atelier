@@ -1,13 +1,14 @@
 import { Plus } from "lucide-react";
-import { CATALOG, FURNITURE_TYPES, PLANT_PRESETS } from "../lib/catalog";
-import { toCm } from "../lib/geometry";
+import { useState } from "react";
+import { useLength, useName, useT } from "../i18n";
+import { CATALOG, LIBRARY, type LibraryCategory, type LibraryPreset } from "../lib/catalog";
+import { lengthValue, type LengthUnit } from "../lib/units";
 import { OPENING_CATALOG, OPENING_TYPES } from "../lib/openings";
 import { selectActiveRoom, useEditor } from "../store/editorStore";
-import type { Wall } from "../types";
+import type { Dimensions, FurnitureType } from "../types";
 import { FurnitureIcon, type ItemType } from "./ui/FurnitureIcon";
+import { ProductImport } from "./ProductImport";
 import { RoomManager } from "./RoomManager";
-
-const WALL_LABEL: Record<Wall, string> = { back: "Back", front: "Front", left: "Left", right: "Right" };
 
 interface CardProps {
   type: ItemType;
@@ -17,8 +18,9 @@ interface CardProps {
 }
 
 function LibraryCard({ type, label, size, onAdd }: CardProps) {
+  const t = useT();
   return (
-    <button type="button" className="library-card" onClick={onAdd} title={`Add ${label.toLowerCase()} to the room`}>
+    <button type="button" className="library-card" onClick={onAdd} title={t.library.addTitle(label)}>
       <span className="library-card__add" aria-hidden>
         <Plus size={13} strokeWidth={2.2} />
       </span>
@@ -31,6 +33,15 @@ function LibraryCard({ type, label, size, onAdd }: CardProps) {
   );
 }
 
+/** Plants and wall-hung pieces read by their height; everything else by its footprint. */
+export function cardSize(type: FurnitureType, { width, depth, height }: Dimensions, unit: LengthUnit): string {
+  const upright = type === "plant" || depth <= 0.1;
+  return `${lengthValue(width, unit, true)} × ${lengthValue(upright ? height : depth, unit, true)}`;
+}
+
+type Filter = LibraryCategory | "all" | "openings";
+const FILTERS: Filter[] = ["all", ...LIBRARY.map((c) => c.id), "openings"];
+
 export function FurnitureLibrary() {
   const addFurniture = useEditor((s) => s.addFurniture);
   const addOpening = useEditor((s) => s.addOpening);
@@ -38,84 +49,93 @@ export function FurnitureLibrary() {
   const openings = useEditor((s) => selectActiveRoom(s).openings);
   const selectedId = useEditor((s) => s.selectedId);
   const select = useEditor((s) => s.select);
+  const t = useT();
+  const name = useName();
+  const len = useLength();
+  const [filter, setFilter] = useState<Filter>("all");
+
+  const presetLabel = (p: LibraryPreset) => t.presets[p.id] ?? t.furniture[p.type].label;
+  const filterLabel = (f: Filter) => f === "all" ? t.library.all : f === "openings" ? t.library.openings : t.library.categories[f];
 
   const items = [
     ...furniture.map((f) => ({
       id: f.id,
       type: f.type as ItemType,
-      name: f.name,
-      meta: `${toCm(f.dimensions.width)}×${toCm(f.dimensions.depth)}`,
+      name: name(f.name),
+      meta: `${len.short(f.dimensions.width)}×${len.short(f.dimensions.depth)}`,
     })),
     ...openings.map((o) => ({
       id: o.id,
       type: o.type as ItemType,
-      name: o.name,
-      meta: `${WALL_LABEL[o.wall]} · ${toCm(o.width)}`,
+      name: name(o.name),
+      meta: `${t.walls[o.wall]} · ${len.short(o.width)}`,
     })),
   ];
 
   return (
-    <aside className="panel panel--left" aria-label="Furniture library">
+    <aside className="panel panel--left" aria-label={t.library.label}>
       <div className="panel__inner">
         <RoomManager />
-        <section className="section">
-          <h2 className="section__title">Furniture</h2>
-          <div className="library">
-            {FURNITURE_TYPES.filter((type) => type !== "plant").map((type) => {
-              const { label, defaults } = CATALOG[type];
-              return (
-                <LibraryCard
-                  key={type}
-                  type={type}
-                  label={label}
-                  size={`${toCm(defaults.width)} × ${toCm(defaults.depth)}`}
-                  onAdd={() => addFurniture(type)}
-                />
-              );
-            })}
-          </div>
-        </section>
+        <ProductImport />
 
-        <section className="section">
-          <h2 className="section__title">Plants</h2>
-          <div className="library">
-            {PLANT_PRESETS.map(({ key, label, dimensions }) => (
-              <LibraryCard
-                key={key}
-                type="plant"
-                label={label}
-                size={`${toCm(dimensions.width)} × ${toCm(dimensions.height)}`}
-                onAdd={() => addFurniture("plant", { name: label, dimensions })}
-              />
+        <section className="section library-filter">
+          <div className="filter-chips" role="radiogroup" aria-label={t.library.filter}>
+            {FILTERS.map((f) => (
+              <button key={f} type="button" role="radio" aria-checked={filter === f}
+                className={`filter-chip${filter === f ? " is-active" : ""}`} onClick={() => setFilter(f)}>
+                {filterLabel(f)}
+              </button>
             ))}
           </div>
-          <p className="library-hint">Drag a plant onto a cabinet, shelf or desk. You can also select its surface in Properties.</p>
         </section>
 
-        <section className="section">
-          <h2 className="section__title">Doors &amp; windows</h2>
-          <div className="library">
-            {OPENING_TYPES.map((type) => {
-              const { label, defaults } = OPENING_CATALOG[type];
-              return (
-                <LibraryCard
-                  key={type}
-                  type={type}
-                  label={label}
-                  size={`${toCm(defaults.width)} × ${toCm(defaults.height)}`}
-                  onAdd={() => addOpening(type)}
-                />
-              );
-            })}
-          </div>
-        </section>
+        {LIBRARY.filter((c) => filter === "all" || filter === c.id).map(({ id, presets }) => (
+          <section className="section" key={id}>
+            <h2 className="section__title">{t.library.categories[id]}</h2>
+            <div className="library">
+              {presets.map((p) => {
+                const label = presetLabel(p);
+                return (
+                  <LibraryCard
+                    key={p.id}
+                    type={p.type}
+                    label={label}
+                    size={cardSize(p.type, p.dimensions ?? CATALOG[p.type].defaults, len.unit)}
+                    onAdd={() => addFurniture(p.type, { name: label, dimensions: p.dimensions, elevation: p.elevation })}
+                  />
+                );
+              })}
+            </div>
+            {id === "plants" && <p className="library-hint">{t.library.plantHint}</p>}
+          </section>
+        ))}
+
+        {(filter === "all" || filter === "openings") && (
+          <section className="section">
+            <h2 className="section__title">{t.library.openings}</h2>
+            <div className="library">
+              {OPENING_TYPES.map((type) => {
+                const { defaults } = OPENING_CATALOG[type];
+                return (
+                  <LibraryCard
+                    key={type}
+                    type={type}
+                    label={t.openings[type].label}
+                    size={`${len.short(defaults.width)} × ${len.short(defaults.height)}`}
+                    onAdd={() => addOpening(type)}
+                  />
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="section">
           <h2 className="section__title">
-            In this room <span className="count">{items.length}</span>
+            {t.library.inRoom} <span className="count">{items.length}</span>
           </h2>
           {items.length === 0 ? (
-            <p className="empty">The room is empty. Pick something from the library above to place it.</p>
+            <p className="empty">{t.library.empty}</p>
           ) : (
             <ul className="outliner">
               {items.map((item) => (

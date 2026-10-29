@@ -1,5 +1,4 @@
 import { useRoomScene } from "./RoomContext";
-import { worldToLocal } from "../lib/rooms";
 import { useThree, type ThreeEvent } from "@react-three/fiber";
 import { useCallback, useEffect, useRef } from "react";
 import { Plane, Raycaster, Vector2, Vector3 } from "three";
@@ -8,8 +7,7 @@ import { beginPlantDrag, resolvePlantDrag } from "../lib/plantDrag";
 import { selectActiveRoom, useEditor } from "../store/editorStore";
 import { roomLocalRay } from "./useOpeningDrag";
 
-/** The floor: the plane y = 0, with its normal pointing up. */
-const FLOOR = new Plane(new Vector3(0, 1, 0), 0);
+const UP = new Vector3(0, 1, 0);
 /** Pixels the pointer must travel before a press becomes a drag (so a click never nudges). */
 const DRAG_THRESHOLD_PX = 4;
 
@@ -38,7 +36,9 @@ export function useFurnitureDrag(id: string) {
 
       const piece = data.furniture.find((f) => f.id === id);
       const hit = new Vector3();
-      if (!piece || !e.ray.intersectPlane(FLOOR, hit)) return;
+      // Drag in the room's own frame, on the level the piece stands at (a gallery deck, say).
+      const support = new Plane(UP, -(piece?.position[1] ?? 0));
+      if (!piece || !roomLocalRay(e.ray, placement).intersectPlane(support, hit)) return;
       let plantAnchor = piece.type === "plant" ? beginPlantDrag(roomLocalRay(e.ray, placement),
         clamp(e.point.y - piece.position[1], 0, piece.dimensions.height), piece, data.furniture, data.room) : null;
       if (piece.type === "plant" && !plantAnchor) return;
@@ -49,9 +49,8 @@ export function useFurnitureDrag(id: string) {
       const orbit = controls as unknown as { enabled: boolean } | null;
       if (orbit) orbit.enabled = false;
 
-      const [hx, hz] = worldToLocal([hit.x, hit.z], placement);
-      const offsetX = piece.position[0] - hx;
-      const offsetZ = piece.position[2] - hz;
+      const offsetX = piece.position[0] - hit.x;
+      const offsetZ = piece.position[2] - hit.z;
       const startX = e.nativeEvent.clientX;
       const startY = e.nativeEvent.clientY;
       let dragging = false;
@@ -86,11 +85,10 @@ export function useFurnitureDrag(id: string) {
           s.updateFurniture(id, { position: result.position }, { history: false });
           return;
         }
-        if (!raycaster.ray.intersectPlane(FLOOR, point)) return;
+        if (!roomLocalRay(raycaster.ray, placement).intersectPlane(support, point)) return;
 
-        const [px, pz] = worldToLocal([point.x, point.z], placement);
-        let x = px + offsetX;
-        let z = pz + offsetZ;
+        let x = point.x + offsetX;
+        let z = point.z + offsetZ;
         // Hold Alt for free movement.
         if (s.snapStep > 0 && !ev.altKey) {
           [x, z] = snapPosition(x, z, current.dimensions, current.rotation, selectActiveRoom(s).room, s.snapStep);
