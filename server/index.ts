@@ -4,20 +4,25 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { FloorPlanError, MODEL, readFloorPlan, type ImageType } from "./floorPlanAi.ts";
+import { findCodex, readFloorPlanWithCodex } from "./floorPlanCodex.ts";
 import type { FloorPlanReading } from "./floorPlanSchema.ts";
 
 /**
- * Room Atelier's server: reads floor plans with Claude (POST /api/floor-plan)
- * and, in production, serves the built app from dist/. In development Vite
- * serves the app and proxies /api here.
+ * Room Atelier's server: reads floor plans (POST /api/floor-plan) and, in
+ * production, serves the built app from dist/. In development Vite serves the
+ * app and proxies /api here.
  *
- * Needs ANTHROPIC_API_KEY (or an `ant auth login` profile) to read plans.
+ * Plans are read by the Codex CLI on this machine, signed in with ChatGPT (no
+ * API key), or with FLOOR_PLAN_PROVIDER=claude by the Claude API, which needs
+ * ANTHROPIC_API_KEY.
  * For working on the app without API calls, FLOOR_PLAN_MOCK names a JSON file
  * (a saved reading) to answer every request with.
  */
 
 const PORT = Number(process.env.PORT) || 5181;
 const MOCK = process.env.FLOOR_PLAN_MOCK;
+const PROVIDER = process.env.FLOOR_PLAN_PROVIDER === "claude" ? "claude" : "codex";
+const READER = MOCK ? `the saved reading ${MOCK}` : PROVIDER === "claude" ? MODEL : `Codex (${findCodex() ?? "not found"})`;
 const DIST = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../dist");
 const MAX_BODY = 8 * 1024 * 1024;
 const IMAGE_TYPES: ImageType[] = ["image/png", "image/jpeg", "image/webp"];
@@ -60,13 +65,14 @@ async function floorPlan(req: http.IncomingMessage, res: http.ServerResponse) {
     if (!match || !IMAGE_TYPES.includes(match[1] as ImageType)) throw new FloorPlanError("Send a PNG, JPEG or WebP image as a data URL.", 400);
     const started = Date.now();
     const reading = MOCK ? JSON.parse(await readFile(MOCK, "utf8")) as FloorPlanReading
-      : await readFloorPlan(anthropic(), match[2], match[1] as ImageType);
+      : PROVIDER === "claude" ? await readFloorPlan(anthropic(), match[2], match[1] as ImageType)
+      : await readFloorPlanWithCodex(match[2], match[1] as ImageType);
     console.log(`floor plan read in ${((Date.now() - started) / 1000).toFixed(1)} s: ${reading.rooms.length} rooms`);
     send(res, 200, reading);
   } catch (error) {
     if (error instanceof FloorPlanError) {
       console.warn(`floor plan: ${error.status} ${error.message}`);
-      send(res, error.status, { error: error.message });
+      send(res, error.status, { error: error.message, code: error.code });
     } else {
       console.error(error);
       send(res, 500, { error: "Unexpected server error." });
@@ -99,7 +105,7 @@ async function serveStatic(req: http.IncomingMessage, res: http.ServerResponse) 
 
 http.createServer((req, res) => {
   const url = req.url ?? "/";
-  if (url === "/api/health") return send(res, 200, { ok: true, model: MODEL });
+  if (url === "/api/health") return send(res, 200, { ok: true, reader: READER });
   if (url === "/api/floor-plan") {
     if (req.method !== "POST") return send(res, 405, { error: "Use POST." });
     return void floorPlan(req, res);
@@ -108,5 +114,5 @@ http.createServer((req, res) => {
   if (req.method !== "GET" && req.method !== "HEAD") return send(res, 405, { error: "Use GET." });
   void serveStatic(req, res);
 }).listen(PORT, () => {
-  console.log(`Room Atelier server on http://localhost:${PORT} (floor plans read by ${MOCK ? `the saved reading ${MOCK}` : MODEL})`);
+  console.log(`Room Atelier server on http://localhost:${PORT} (floor plans read by ${READER})`);
 });

@@ -10,9 +10,12 @@ export type ImageType = "image/png" | "image/jpeg" | "image/webp";
 export class FloorPlanError extends Error {
   /** The HTTP status to answer with. */
   readonly status: number;
-  constructor(message: string, status: number) {
+  /** A stable name for the browser to explain the failure in its own language. */
+  readonly code: string | undefined;
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -45,7 +48,7 @@ export async function readFloorPlan(client: Anthropic, image: string, mediaType:
     return response.parsed_output;
   } catch (error) {
     if (error instanceof FloorPlanError) throw error;
-    if (error instanceof Anthropic.AuthenticationError) throw new FloorPlanError("No valid Anthropic API key is configured on the server.", 503);
+    if (error instanceof Anthropic.AuthenticationError) throw new FloorPlanError("No valid Anthropic API key is configured on the server.", 503, "no-key");
     if (error instanceof Anthropic.PermissionDeniedError) throw new FloorPlanError("The API key can't use this model.", 503);
     if (error instanceof Anthropic.RateLimitError) throw new FloorPlanError("Too many requests; try again in a moment.", 429);
     if (error instanceof Anthropic.BadRequestError) throw new FloorPlanError(`The request was rejected: ${error.message}`, 400);
@@ -53,7 +56,7 @@ export async function readFloorPlan(client: Anthropic, image: string, mediaType:
     if (error instanceof Anthropic.APIError) throw new FloorPlanError(`Anthropic API error ${error.status}`, 502);
     // No API key or profile anywhere: the client can't even be constructed or sign a request.
     if (error instanceof Error && /api key|apiKey|authentication/i.test(error.message)) {
-      throw new FloorPlanError("No Anthropic API key is configured on the server.", 503);
+      throw new FloorPlanError("No Anthropic API key is configured on the server.", 503, "no-key");
     }
     throw error;
   }
