@@ -1,4 +1,4 @@
-import type { Furniture, Layout, Opening, Palette, ProjectRoom, Room, RoomContents, RoomStructure, Wall } from "../types";
+import type { Building, Furniture, Layout, Opening, Palette, ProjectRoom, Room, RoomContents, RoomStructure, Wall } from "../types";
 import { CATALOG, ROOM_LIMITS } from "./catalog";
 import { clamp, normalizeDeg } from "./geometry";
 import { OPENING_CATALOG, WALLS } from "./openings";
@@ -137,7 +137,8 @@ export function parseLayout(raw: unknown): Layout | null {
       const position: [number, number] = Array.isArray(r.position) && r.position.length === 2 && r.position.every(isNum)
         ? [clamp(r.position[0], -1000, 1000), clamp(r.position[1], -1000, 1000)] : [0, 0];
       return [{ ...contents, ...parseStructure(r), id: r.id, name: typeof r.name === "string" && r.name.trim() ? r.name : "Room",
-        position, rotation: isNum(r.rotation) ? normalizeDeg(r.rotation) : 0 }];
+        position, rotation: isNum(r.rotation) ? normalizeDeg(r.rotation) : 0,
+        ...(typeof r.buildingId === "string" ? { buildingId: r.buildingId } : {}) }];
     });
   }
   if (!rooms.length) return null;
@@ -153,8 +154,30 @@ export function parseLayout(raw: unknown): Layout | null {
   });
   const activeRoomId = typeof raw.activeRoomId === "string" && rooms.some((r) => r.id === raw.activeRoomId)
     ? raw.activeRoomId : rooms[0].id;
-  return { version: 2, projectName, rooms, activeRoomId, roomDisplay: raw.roomDisplay === "all" ? "all" : "single",
-    ...(raw.wallView === "exterior" ? { wallView: "exterior" as const } : {}) };
+  const grouped = parseBuildings(raw.buildings, rooms);
+  return { version: 2, projectName, rooms: grouped.rooms, activeRoomId, roomDisplay: raw.roomDisplay === "all" || raw.roomDisplay === "building" ? raw.roomDisplay : "single",
+    ...(raw.wallView === "exterior" ? { wallView: "exterior" as const } : {}),
+    ...(grouped.buildings.length ? { buildings: grouped.buildings } : {}) };
+}
+
+/**
+ * Keep buildings with a usable id and name; rooms keep their building only
+ * when it exists, and buildings no room points to are dropped.
+ */
+function parseBuildings(raw: unknown, rooms: ProjectRoom[]): { rooms: ProjectRoom[]; buildings: Building[] } {
+  const listed = new Map<string, Building>();
+  if (Array.isArray(raw)) {
+    for (const b of raw) {
+      if (!isObject(b) || typeof b.id !== "string" || !b.id || listed.has(b.id)) continue;
+      listed.set(b.id, { id: b.id, name: typeof b.name === "string" && b.name.trim() ? b.name : "Building" });
+    }
+  }
+  const checked = rooms.map((r): ProjectRoom => {
+    const { buildingId, ...rest } = r as ProjectRoom & { buildingId?: unknown };
+    return typeof buildingId === "string" && listed.has(buildingId) ? { ...rest, buildingId } : rest;
+  });
+  const used = new Set(checked.map((r) => r.buildingId));
+  return { rooms: checked, buildings: [...listed.values()].filter((b) => used.has(b.id)) };
 }
 
 function storage(): Storage | null {

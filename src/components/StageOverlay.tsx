@@ -1,6 +1,7 @@
 import { Box, CircleCheck, Focus, House, Lightbulb, Pause, PencilRuler, Play, TriangleAlert } from "lucide-react";
 import { useLength, useName, useT } from "../i18n";
-import { selectActiveRoom, selectIssues, useEditor } from "../store/editorStore";
+import { selectActiveRoom, selectCombined, selectIssues, selectShownRooms, useEditor } from "../store/editorStore";
+import { useShallow } from "zustand/react/shallow";
 import { RoomDisplayControl } from "./RoomManager";
 
 /** Live layout-check summary; clicking it deselects so the room panel shows the full list. */
@@ -44,7 +45,10 @@ function CheckChip() {
 export function StageOverlay() {
   const rooms = useEditor((s) => s.rooms);
   const active = useEditor(selectActiveRoom);
-  const combined = useEditor((s) => s.roomDisplay === "all");
+  const combined = useEditor(selectCombined);
+  const building = useEditor((s) => s.roomDisplay === "building" && selectCombined(s)
+    ? s.buildings.find((b) => b.id === selectActiveRoom(s).buildingId) ?? null : null);
+  const shown = useEditor(useShallow(selectShownRooms));
   const selectRoom = useEditor((s) => s.selectRoom);
   const mode = useEditor((s) => s.mode);
   const view = useEditor((s) => s.view);
@@ -77,9 +81,9 @@ export function StageOverlay() {
       {mode === "preview" && (
         <div className="placard">
           <span className="placard__eyebrow">{t.eyebrow}</span>
-          <h1 className="placard__title">{name(combined ? projectName : active.name)}</h1>
+          <h1 className="placard__title">{name(building ? building.name : combined ? projectName : active.name)}</h1>
           <span className="placard__meta">
-            {combined ? t.projectMeta(rooms.length, len.area(rooms.reduce((sum, r) => sum + r.room.width * r.room.depth, 0)))
+            {combined ? t.projectMeta(shown.length, len.area(shown.reduce((sum, r) => sum + r.room.width * r.room.depth, 0)))
               : t.roomMeta(len.size(room.width, room.depth), len.area(room.width * room.depth), count)}
           </span>
         </div>
@@ -103,7 +107,7 @@ export function StageOverlay() {
             </button>
           )}
           <button type="button" className="chip" onClick={resetCamera} title={t.frameHint}>
-            <Focus size={14} strokeWidth={1.8} /> {combined ? t.frameAll : t.frameRoom}
+            <Focus size={14} strokeWidth={1.8} /> {building ? t.frameBuilding : combined ? t.frameAll : t.frameRoom}
           </button>
           {mode === "preview" && (
             <button type="button" className="chip chip--dark" onClick={() => setMode("edit")} title={t.backToEditHint}>

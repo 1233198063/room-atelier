@@ -146,7 +146,7 @@ function frontKind(f: Furniture): "doors" | "drawers" | "door" | null {
     case "cabinet": return f.dimensions.height > 1 ? "doors" : "drawers";
     case "dresser": return "drawers";
     case "fridge": case "vanity": return "doors";
-    case "washer": return "door";
+    case "washer": case "range": case "dishwasher": return "door";
     default: return null;
   }
 }

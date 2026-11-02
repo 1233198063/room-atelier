@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { SAMPLE_LAYOUT } from "../lib/sampleLayout";
-import { selectActiveRoom, selectLayout, selectSceneBounds, useEditor } from "./editorStore";
+import { movingUnit, selectActiveRoom, selectCombined, selectLayout, selectSceneBounds, selectVisibleRooms, useEditor } from "./editorStore";
 import { parseLayout } from "../lib/persistence";
-import { roomBounds } from "../lib/rooms";
+import { localToWorld, roomBounds, roomCorners, roomsConflict } from "../lib/rooms";
+import { wallToWorld } from "../lib/openings";
+import { ADU_PROJECT } from "../lib/aduTemplate";
 import { supportingSurface } from "../lib/plantPlacement";
 import { footprintBounds } from "../lib/geometry";
 
@@ -381,7 +383,7 @@ describe("multi-level projects", () => {
         furniture: [], openings: [], palette: active().palette },
     ] });
     const [garden, cellar] = get().rooms.slice(before);
-    expect(get().roomDisplay).toBe("all");
+    expect(get().roomDisplay).toBe("building");
     expect(get().activeRoomId).toBe(garden.id);
     expect(garden.kind).toBe("garden");
     expect(cellar.elevation).toBe(-3);
@@ -404,5 +406,254 @@ describe("multi-level projects", () => {
     expect(active()).not.toHaveProperty("kind");
     expect(active()).not.toHaveProperty("roof");
     expect(parseLayout(JSON.parse(JSON.stringify(selectLayout(get()))))).toEqual(selectLayout(get()));
+  });
+});
+
+describe("buildings and batch actions", () => {
+  const ids = () => get().rooms.map((r) => r.id);
+  const room = (id: string) => get().rooms.find((r) => r.id === id)!;
+  const addRooms = (n: number) => Array.from({ length: n }, () => get().addRoom());
+
+  it("makes each added project one building, named after it", () => {
+    get().addProject(ADU_PROJECT);
+    get().addProject(ADU_PROJECT);
+    expect(get().buildings.map((b) => b.name)).toEqual([ADU_PROJECT.name, `${ADU_PROJECT.name} 2`]);
+    const [first, second] = get().buildings;
+    expect(get().rooms.filter((r) => r.buildingId === first.id)).toHaveLength(3);
+    expect(get().rooms.filter((r) => r.buildingId === second.id)).toHaveLength(3);
+    expect(get().rooms[0].buildingId).toBeUndefined();
+    get().undo();
+    expect(get().buildings).toEqual([first]);
+  });
+
+  it("groups rooms into a new building, adds others to it, and merges buildings into the first", () => {
+    const [a, b, c, d] = addRooms(4);
+    const building = get().groupRooms([b, a])!;
+    expect(get().buildings).toEqual([{ id: building, name: "Building" }]);
+    expect([room(a), room(b)].map((r) => r.buildingId)).toEqual([building, building]);
+
+    get().groupRooms([c, a]);
+    expect(room(c).buildingId).toBe(building);
+    const count = get().past.length;
+    expect(get().groupRooms([a, b, c])).toBe(building);
+    expect(get().past).toHaveLength(count); // already one building: nothing to record
+
+    const other = get().groupRooms([d])!;
+    expect(other).not.toBe(building);
+    expect(get().buildings.map((x) => x.name)).toEqual(["Building", "Building 2"]);
+    get().groupRooms([d, a]);
+    expect(room(d).buildingId).toBe(building); // a is listed first, so its building takes the rest in
+    expect(get().buildings.map((x) => x.id)).toEqual([building]);
+  });
+
+  it("ungroups without moving rooms and drops buildings left empty", () => {
+    const [a, b] = addRooms(2);
+    const building = get().groupRooms([a, b])!;
+    const before = [room(a).position, room(b).position];
+    get().ungroupRooms([a]);
+    expect(room(a)).not.toHaveProperty("buildingId");
+    expect(get().buildings).toHaveLength(1);
+    get().ungroupRooms([b]);
+    expect(get().buildings).toEqual([]);
+    expect([room(a).position, room(b).position]).toEqual(before);
+    get().undo();
+    expect(get().buildings.map((x) => x.id)).toEqual([building]);
+    expect(room(b).buildingId).toBe(building);
+  });
+
+  it("renames buildings as an undoable step and ignores empty names", () => {
+    const building = get().groupRooms(addRooms(1))!;
+    get().renameBuilding(building, "  Garage  ");
+    expect(get().buildings[0].name).toBe("Garage");
+    get().renameBuilding(building, "   ");
+    expect(get().buildings[0].name).toBe("Garage");
+    get().undo();
+    expect(get().buildings[0].name).toBe("Building");
+  });
+
+  it("deletes ticked rooms in one undo step, keeping at least one room", () => {
+    const [a, b, c] = addRooms(3);
+    get().groupRooms([b, c]);
+    get().setCheckedRooms([b, c, a]);
+    expect(get().checkedRoomIds).toEqual([a, b, c]);
+    const count = get().past.length;
+    get().removeRooms([b, c]);
+    expect(ids()).not.toContain(b);
+    expect(get().buildings).toEqual([]);
+    expect(get().checkedRoomIds).toEqual([a]);
+    expect(get().past).toHaveLength(count + 1);
+    get().undo();
+    expect(ids()).toContain(c);
+    expect(get().buildings).toHaveLength(1);
+    get().removeRooms(ids());
+    expect(get().rooms).toHaveLength(4);
+  });
+
+  it("keeps ticks out of the document and the undo history", () => {
+    const [a] = addRooms(1);
+    const count = get().past.length;
+    get().setCheckedRooms([a, "missing", a]);
+    expect(get().checkedRoomIds).toEqual([a]);
+    expect(get().past).toHaveLength(count);
+    expect(selectLayout(get())).not.toHaveProperty("checkedRoomIds");
+    get().undo(); // removes room a
+    expect(get().checkedRoomIds).toEqual([]);
+  });
+
+  it("moves, nudges and turns ticked rooms as one unit", () => {
+    const first = active().id;
+    const [a, b] = addRooms(2);
+    get().setCheckedRooms([a, b]);
+    expect(movingUnit(get(), a)).toEqual([a, b]);
+    expect(movingUnit(get(), first)).toEqual([first]);
+    const corners = () => [a, b].flatMap((id) => roomCorners(room(id)));
+    const gap = (p: number[][]) => Math.hypot(p[0][0] - p[4][0], p[0][1] - p[4][1]);
+    const before = corners();
+    get().moveRooms([a, b], [1.5, -2]);
+    corners().forEach(([x, z], i) => {
+      expect(x).toBeCloseTo(before[i][0] + 1.5);
+      expect(z).toBeCloseTo(before[i][1] - 2);
+    });
+    const count = get().past.length;
+    get().rotateRooms([a, b], 90);
+    expect(get().past).toHaveLength(count + 1);
+    expect([room(a).rotation, room(b).rotation]).toEqual([90, 90]);
+    expect(gap(corners())).toBeCloseTo(gap(before));
+    get().rotateRooms([first], 90);
+    expect(room(first).position).toEqual(get().past.at(-1)!.rooms.find((r) => r.id === first)!.position);
+  });
+
+  it("joins a whole unit against another room", () => {
+    const first = active().id;
+    const [a, b] = addRooms(2);
+    get().moveRooms([a, b], [10, 10]);
+    const offset = room(b).position[0] - room(a).position[0];
+    get().attachRoom(a, first, "right", [a, b]);
+    const unit = [a, b].map((id) => roomBounds(room(id), true));
+    expect(Math.min(...unit.map((u) => u.minX))).toBeCloseTo(roomBounds(room(first), true).maxX);
+    expect(room(b).position[0] - room(a).position[0]).toBeCloseTo(offset);
+  });
+
+  it("saves buildings, and only when there are some", () => {
+    expect(selectLayout(get())).not.toHaveProperty("buildings");
+    get().groupRooms(addRooms(2));
+    const document = selectLayout(get());
+    expect(document.buildings).toHaveLength(1);
+    expect(parseLayout(JSON.parse(JSON.stringify(document)))).toEqual(document);
+  });
+});
+
+describe("showing one building", () => {
+  const shown = () => selectVisibleRooms(get()).map((r) => r.id);
+
+  it("shows only the selected room's building, in place, after adding a project", () => {
+    const loose = active().id;
+    get().addProject(ADU_PROJECT);
+    const adu = get().rooms.filter((r) => r.buildingId).map((r) => r.id);
+    expect(get().roomDisplay).toBe("building");
+    expect(shown()).toEqual(adu);
+    expect(selectVisibleRooms(get()).map((r) => r.position)).toEqual(get().rooms.slice(1).map((r) => r.position));
+    get().setRoomDisplay("all");
+    expect(shown()).toEqual([loose, ...adu]);
+  });
+
+  it("shows a room in no building on its own", () => {
+    get().addProject(ADU_PROJECT);
+    get().selectRoom(get().rooms[0].id);
+    expect(selectCombined(get())).toBe(false);
+    expect(selectVisibleRooms(get())).toEqual([{ ...get().rooms[0], position: [0, 0], rotation: 0, elevation: 0 }]);
+  });
+
+  it("switches to a building from the sidebar, keeping the room being edited when it is inside", () => {
+    get().addProject(ADU_PROJECT);
+    const [, kitchen, bedroom] = get().rooms;
+    get().addProject(ADU_PROJECT);
+    const [first, second] = get().buildings;
+    get().setRoomDisplay("single");
+    get().showBuilding(first.id);
+    expect(get().activeRoomId).toBe(kitchen.id);
+    expect(get().roomDisplay).toBe("building");
+    get().selectRoom(bedroom.id);
+    const token = get().cameraResetToken;
+    get().showBuilding(first.id);
+    expect(get().activeRoomId).toBe(bedroom.id);
+    get().selectRoom(kitchen.id);
+    expect(get().cameraResetToken).toBe(token + 1); // showBuilding reframes; moving within it doesn't
+    get().selectRoom(get().rooms.find((r) => r.buildingId === second.id)!.id);
+    expect(get().cameraResetToken).toBe(token + 2);
+    expect(shown().every((id) => get().rooms.find((r) => r.id === id)!.buildingId === second.id)).toBe(true);
+    get().showBuilding("missing");
+    expect(get().buildings[1]).toBe(second);
+  });
+
+  it("saves the building view", () => {
+    get().addProject(ADU_PROJECT);
+    expect(parseLayout(JSON.parse(JSON.stringify(selectLayout(get()))))!.roomDisplay).toBe("building");
+  });
+});
+
+describe("custom joins", () => {
+  const room = (id: string) => get().rooms.find((r) => r.id === id)!;
+  const doorAt = (id: string, wall: string, along: (o: { offset: number; width: number }) => number) => {
+    const r = room(id), o = r.openings.find((x) => x.type === "door" && x.wall === wall)!;
+    return localToWorld(wallToWorld(o.wall, along(o), 0, r.room), r);
+  };
+  const gap = (p: number[], q: number[]) => Math.hypot(p[0] - q[0], p[1] - q[1]);
+
+  it("turns and places a room against the chosen wall and cuts one door through both walls", () => {
+    const target = active().id;
+    const moving = get().addRoom();
+    get().setRoom({ width: 3, depth: 2.4 });
+    const count = get().past.length;
+    expect(get().joinRooms({ roomId: moving, wall: "front", targetId: target, targetWall: "right", align: "center", offset: 0.2,
+      connection: "door", doorWidth: 0.8 })).toBe(true);
+    expect(get().past).toHaveLength(count + 1);
+    expect(room(moving).rotation).toBe(270);
+    expect(roomsConflict(room(target), room(moving))).toBe(false);
+    // The two doors face each other across the walls, and hinge on the same side.
+    const middle = (o: { offset: number }) => o.offset, jamb = (hinge: string) => (o: { offset: number; width: number }) => o.offset + (hinge === "start" ? -1 : 1) * o.width / 2;
+    expect(gap(doorAt(target, "right", middle), doorAt(moving, "front", middle))).toBeCloseTo(0.2);
+    const hinge = (id: string) => room(id).openings.find((o) => o.type === "door")!.hinge;
+    expect(gap(doorAt(target, "right", jamb(hinge(target))), doorAt(moving, "front", jamb(hinge(moving))))).toBeCloseTo(0.2);
+    // Centered on the shared part: the moving wall spans 0.2–3.2 m along a 3 m wall.
+    expect(room(target).openings.find((o) => o.type === "door")!.offset).toBeCloseTo((0.2 + 3) / 2);
+    get().undo();
+    expect(room(target).openings.some((o) => o.type === "door")).toBe(false);
+    expect(room(moving).rotation).toBe(0);
+  });
+
+  it("opens two matching walls into one space, and only matching ones", () => {
+    const target = active().id;
+    const moving = get().addRoom();
+    const count = get().past.length;
+    expect(get().joinRooms({ roomId: moving, wall: "left", targetId: target, targetWall: "right", align: "start", offset: 0.5, connection: "open" })).toBe(false);
+    expect(get().past).toHaveLength(count);
+    expect(get().joinRooms({ roomId: moving, wall: "left", targetId: target, targetWall: "right", align: "start", offset: 0, connection: "open" })).toBe(true);
+    expect(room(moving).openWalls).toEqual(["left"]);
+    expect(room(target).openWalls).toEqual(["right"]);
+    expect(room(moving).position).toEqual([4, room(target).position[1]]); // floors meet: no wall between
+    expect(roomsConflict(room(target), room(moving))).toBe(false);
+    // Joined again with walls, both walls come back.
+    get().joinRooms({ roomId: moving, wall: "left", targetId: target, targetWall: "right", align: "start", offset: 0, connection: "wall" });
+    expect(room(moving)).not.toHaveProperty("openWalls");
+    expect(room(target)).not.toHaveProperty("openWalls");
+  });
+
+  it("refuses a door where the walls share too little, and joins that move a target along", () => {
+    const target = active().id;
+    const moving = get().addRoom();
+    expect(get().joinRooms({ roomId: moving, wall: "left", targetId: target, targetWall: "right", align: "start", offset: 2.5, connection: "door" })).toBe(false);
+    expect(get().joinRooms({ roomId: moving, wall: "left", targetId: target, targetWall: "right", align: "start", offset: 0, connection: "wall",
+      together: [moving, target] })).toBe(false);
+  });
+
+  it("moves ticked rooms along with the joined one", () => {
+    const target = active().id;
+    const a = get().addRoom(), b = get().addRoom();
+    get().moveRooms([a, b], [20, 5]);
+    const before = roomCorners(room(b))[0], anchor = roomCorners(room(a))[0];
+    get().joinRooms({ roomId: a, wall: "back", targetId: target, targetWall: "front", align: "start", offset: 0, connection: "wall", together: [a, b] });
+    expect(room(a).position).toEqual([room(target).position[0], room(target).position[1] + 3.2]);
+    expect(gap(roomCorners(room(b))[0], roomCorners(room(a))[0])).toBeCloseTo(gap(before, anchor));
   });
 });

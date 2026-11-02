@@ -44,6 +44,26 @@ export const CATALOG: Record<FurnitureType, CatalogEntry> = {
     defaults: { width: 2.4, depth: 0.6, height: 0.85 },
     min: { width: 0.6, depth: 0.45, height: 0.7 }, max: { width: 5, depth: 0.8, height: 1 },
   },
+  range: {
+    type: "range",
+    defaults: { width: 0.76, depth: 0.66, height: 0.97 },
+    min: { width: 0.5, depth: 0.55, height: 0.85 }, max: { width: 1.25, depth: 0.8, height: 1.05 },
+  },
+  wallCabinet: {
+    type: "wallCabinet",
+    defaults: { width: 0.8, depth: 0.33, height: 0.76 },
+    min: { width: 0.3, depth: 0.25, height: 0.3 }, max: { width: 3, depth: 0.65, height: 1.2 },
+  },
+  dishwasher: {
+    type: "dishwasher",
+    defaults: { width: 0.6, depth: 0.62, height: 0.91 },
+    min: { width: 0.45, depth: 0.55, height: 0.8 }, max: { width: 0.65, depth: 0.7, height: 0.95 },
+  },
+  microwave: {
+    type: "microwave",
+    defaults: { width: 0.76, depth: 0.4, height: 0.42 },
+    min: { width: 0.4, depth: 0.3, height: 0.25 }, max: { width: 0.8, depth: 0.5, height: 0.5 },
+  },
   toilet: {
     type: "toilet",
     defaults: { width: 0.4, depth: 0.7, height: 0.78 },
@@ -236,7 +256,9 @@ export const LIBRARY: { id: LibraryCategory; presets: LibraryPreset[] }[] = [
     p("easel", "easel"),
   ] },
   { id: "kitchen", presets: [
-    p("kitchenCounter", "kitchenCounter"), p("fridge", "fridge", [0.6, 0.65, 1.75]), p("fridgeWide", "fridge", [0.9, 0.7, 1.8]),
+    p("kitchenCounter", "kitchenCounter"), p("wallCabinet", "wallCabinet", undefined, 1.45), p("range", "range"),
+    p("dishwasher", "dishwasher"), p("microwave", "microwave", undefined, 1.45),
+    p("fridge", "fridge", [0.6, 0.65, 1.75]), p("fridgeWide", "fridge", [0.9, 0.7, 1.8]),
     p("island", "table", [2, 1, 0.92]), p("barStool", "chair", [0.42, 0.45, 0.95]),
   ] },
   { id: "bathroom", presets: [
@@ -255,6 +277,8 @@ export const LIBRARY: { id: LibraryCategory; presets: LibraryPreset[] }[] = [
  */
 export const SURFACE_TYPES: FurnitureType[] = ["desk", "dresser", "cabinet", "worktable", "bookcase", "table", "roundTable", "kitchenCounter"];
 export const WORKTABLE_TOOL_HEIGHT = 0.16;
+/** From this height a chair is a counter stool: a high seat, a low back and a footrest. */
+export const COUNTER_STOOL_H = 0.95;
 
 /** Pieces people routinely shift around; layout checks don't treat them as fixed obstacles. */
 export const MOVABLE_TYPES: FurnitureType[] = ["chair", "officeChair", "plant", "ottoman", "lamp"];

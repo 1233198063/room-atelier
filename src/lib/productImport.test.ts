@@ -19,6 +19,10 @@ describe("parseProduct", () => {
     ["Area rug 5 ft x 8 ft", "rug", { width: 1.524, depth: 2.438 }],
     ["Bookcase 31.5'' x 11.8'' x 70.9''", "bookcase", { width: 0.8, depth: 0.3, height: 1.801 }],
     ["Dining table 220x95x75 modern oak", "table", { width: 2.2, depth: 0.95, height: 0.75 }],
+    ['Bosch built-in dishwasher 23.6" W x 22.5" D x 33.9" H', "dishwasher", { width: 0.599, depth: 0.572, height: 0.861 }],
+    ["LG 30英寸 燃气灶烤箱一体 76×66×97cm", "range", { width: 0.76, depth: 0.66, height: 0.97 }],
+    ["Over-the-range microwave oven 29.9 x 15.9 x 16.4 in", "microwave", { width: 0.759, depth: 0.404, height: 0.417 }],
+    ["厨房吊柜 宽80 深33 高76", "wallCabinet", { width: 0.8, depth: 0.33, height: 0.76 }],
   ])("%s", (text, type, dimensions) => {
     const parsed = parseProduct(text);
     expect(parsed.type).toBe(type);

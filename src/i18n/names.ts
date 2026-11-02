@@ -16,6 +16,7 @@ type NamePair = [en: string, zh: string];
 const SAMPLE: NamePair[] = [
   [en.defaults.room, zh.defaults.room],
   [en.defaults.project, zh.defaults.project],
+  [en.defaults.building, zh.defaults.building],
   ["Bedroom Study", "卧室书房"],
   ["Nightstand", "床头柜"],
   ["Wardrobe", "衣柜"],
@@ -201,6 +202,54 @@ const VILLA: NamePair[] = [
   ["South cypress", "南侧柏树"],
 ];
 
+/** 后院小屋 ADU (aduTemplate.ts). */
+const ADU: NamePair[] = [
+  ["Backyard ADU · 1 bed, 1 bath", "后院小屋 ADU · 一室一厅一卫"],
+  ["Living room & open kitchen", "客厅与开放式厨房"],
+  ["Small bedroom", "小卧室"],
+  ["Bathroom · shower", "卫生间 · 淋浴"],
+  ["Front door", "入户门"],
+  ["Bedroom door", "卧室门"],
+  ["Bathroom door", "卫生间门"],
+  ["Bedroom window", "卧室窗"],
+  // Kitchen
+  ["Drawer base cabinet", "抽屉地柜"],
+  ["Stainless gas range", "不锈钢燃气灶烤箱"],
+  ["Sink base cabinet", "水槽地柜"],
+  ["Black dishwasher", "黑色洗碗机"],
+  ["Black fridge", "黑色冰箱"],
+  ["White wall cabinets", "白色吊柜"],
+  ["Black microwave", "黑色微波炉"],
+  ["Cabinet over the microwave", "微波炉上方吊柜"],
+  ["Cabinet over the fridge", "冰箱上方吊柜"],
+  ["Small plant on the counter", "台面小盆栽"],
+  // Living room
+  ["Grey shag rug", "灰色长毛地毯"],
+  ["Periwinkle loveseat", "灰蓝色双人沙发"],
+  ["Blue-grey ottoman coffee table", "灰蓝软凳茶几"],
+  ["Grey armchair with wooden arms", "木扶手灰色单椅"],
+  ["Counter-height bistro table", "高脚小圆桌"],
+  ["Tan quilted counter stool", "棕色绗缝吧凳"],
+  ["White counter stool", "白色吧凳"],
+  ["Plant on the bistro table", "小圆桌上的绿植"],
+  ["Closet with mirrored sliding doors", "镜面推拉门衣柜"],
+  ["Black-and-white magnolia print", "黑白玉兰花挂画"],
+  // Bedroom
+  ["Beige wall-to-wall carpet", "米色满铺地毯"],
+  ["Wood desk with iron legs", "铁艺腿木书桌"],
+  ["Wooden chair, grey cushion", "灰色软垫木椅"],
+  ["Desk lamp", "书桌台灯"],
+  ["Full bed, grey paisley bedding", "双人床 · 灰色佩斯利床品"],
+  ["Nightstand by the back wall", "里侧床头柜"],
+  ["Nightstand by the door", "外侧床头柜"],
+  ["Nightstand lamp", "床头柜台灯"],
+  ["Abstract landscape over the bed", "床头抽象风景画"],
+  // Bathroom
+  ["Shower with sliding glass doors", "推拉玻璃门淋浴间"],
+  ["White vanity", "白色浴室柜"],
+  ["Yellow orchid on the vanity", "浴室柜上的黄色兰花"],
+];
+
 /** Labels of everything in the library: the default names of new pieces. */
 const LABELS: NamePair[] = [
   ...(Object.keys(en.furniture) as FurnitureType[]).map((t): NamePair => [en.furniture[t].label, zh.furniture[t].label]),
@@ -208,7 +257,7 @@ const LABELS: NamePair[] = [
   ...Object.keys(en.presets).map((k): NamePair => [en.presets[k], zh.presets[k]]),
 ];
 
-export const NAME_PAIRS: NamePair[] = [...SAMPLE, ...SUNLIT_STUDY, ...VILLA, ...LABELS];
+export const NAME_PAIRS: NamePair[] = [...SAMPLE, ...SUNLIT_STUDY, ...VILLA, ...ADU, ...LABELS];
 
 const LOOKUP = new Map<string, NamePair>();
 for (const pair of NAME_PAIRS) for (const text of pair) LOOKUP.set(text, pair);

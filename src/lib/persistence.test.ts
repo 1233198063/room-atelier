@@ -132,6 +132,27 @@ describe("parseLayout", () => {
   });
 });
 
+describe("buildings", () => {
+  const room = (id: string, buildingId?: unknown) => ({ id, name: id, position: [0, 0], rotation: 0, room: SAMPLE_LAYOUT.room,
+    furniture: [], openings: [], ...(buildingId === undefined ? {} : { buildingId }) });
+
+  it("keeps rooms in existing buildings and drops unknown, empty and malformed buildings", () => {
+    const layout = parseLayout({ version: 2, projectName: "P", activeRoomId: "a", roomDisplay: "all",
+      rooms: [room("a", "b1"), room("b", "ghost"), room("c", 7), room("d", "b1")],
+      buildings: [{ id: "b1", name: "Cottage" }, { id: "b1", name: "Duplicate" }, { id: "empty", name: "Empty" },
+        { id: "", name: "No id" }, { id: "b2" }, "garbage"] })!;
+    expect(layout.buildings).toEqual([{ id: "b1", name: "Cottage" }]);
+    expect(layout.rooms.map((r) => r.buildingId)).toEqual(["b1", undefined, undefined, "b1"]);
+    expect(layout.rooms[1]).not.toHaveProperty("buildingId");
+  });
+
+  it("names a building without a name, and loads older saves without any", () => {
+    const named = parseLayout({ version: 2, projectName: "P", activeRoomId: "a", rooms: [room("a", "b")], buildings: [{ id: "b", name: " " }] })!;
+    expect(named.buildings).toEqual([{ id: "b", name: "Building" }]);
+    expect(parseLayout({ version: 2, projectName: "P", activeRoomId: "a", rooms: [room("a")] })).not.toHaveProperty("buildings");
+  });
+});
+
 describe("multi-level structure", () => {
   it("keeps valid levels, kinds and roofs and stores defaults as absent", () => {
     const base = parseLayout(SAMPLE_LAYOUT)!;

@@ -25,6 +25,7 @@ export function startAutosave(): () => void {
     if (adopting) return;
     const docChanged =
       state.rooms !== prev.rooms ||
+      state.buildings !== prev.buildings ||
       state.activeRoomId !== prev.activeRoomId ||
       state.roomDisplay !== prev.roomDisplay ||
       state.wallView !== prev.wallView ||

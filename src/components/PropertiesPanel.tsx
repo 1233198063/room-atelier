@@ -1,4 +1,4 @@
-import { selectActiveRoom } from "../store/editorStore";
+import { selectActiveRoom, selectCombined } from "../store/editorStore";
 import {
   AlignHorizontalJustifyCenter,
   AlignVerticalJustifyCenter,
@@ -47,7 +47,7 @@ const historyFor = (key: string, meta: ChangeMeta) =>
 
 export function PropertiesPanel() {
   const active = useEditor(selectActiveRoom);
-  const combined = useEditor((s) => s.roomDisplay === "all");
+  const combined = useEditor(selectCombined);
   const select = useEditor((s) => s.select);
   const furniture = useEditor(selectSelected);
   const opening = useEditor(selectSelectedOpening);

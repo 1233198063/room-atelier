@@ -5,7 +5,7 @@ import { NeutralToneMapping } from "three";
 import { useName } from "../i18n";
 import { degToRad } from "../lib/geometry";
 import { gardenHoles, roomElevation, roomKind, type Point2 } from "../lib/rooms";
-import { selectVisibleRooms, useEditor } from "../store/editorStore";
+import { selectCombined, selectVisibleRooms, useEditor } from "../store/editorStore";
 import type { ProjectRoom } from "../types";
 import { CameraRig } from "./CameraRig";
 import { FurnitureItem } from "./FurnitureItem";
@@ -19,7 +19,7 @@ import { useFlaggedIds } from "./useFlaggedIds";
 
 function RoomScene({ data, holes }: { data: ProjectRoom; holes: Point2[][] }) {
   const editing = useEditor((s) => s.mode === "edit");
-  const combined = useEditor((s) => s.roomDisplay === "all");
+  const combined = useEditor(selectCombined);
   const active = useEditor((s) => s.activeRoomId === data.id);
   const exterior = useEditor((s) => s.wallView === "exterior" && s.view === "perspective");
   const selectedId = useEditor((s) => s.selectedId);

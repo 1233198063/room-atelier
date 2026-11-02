@@ -49,6 +49,10 @@ const FIELDS: Record<FurnitureType, ColorField[]> = {
   fridge: [{ key: "ceramic", part: "body" }, HARDWARE],
   washer: [{ key: "ceramic", part: "body" }],
   kitchenCounter: [{ key: "wood", part: "fronts" }, { key: "stone", part: "countertop" }, { key: "woodDark", part: "legsBase" }, HARDWARE],
+  range: [],
+  wallCabinet: [{ key: "wood", part: "fronts" }, { key: "woodDark", part: "body" }, HARDWARE],
+  dishwasher: [{ key: "ceramic", part: "body" }, { key: "stone", part: "countertop" }],
+  microwave: [{ key: "ceramic", part: "body" }],
   toilet: [{ key: "ceramic", part: "porcelain" }],
   vanity: [{ key: "wood", part: "fronts" }, { key: "ceramic", part: "basin" }, HARDWARE],
   bathtub: [{ key: "ceramic", part: "porcelain" }],
@@ -81,11 +85,15 @@ export function furnitureColor(f: Furniture, palette: Palette, key: FurnitureCol
   return f.colors?.[key] ?? fallback;
 }
 
+/** Brushed stainless: a range's top in the small plan. Fixed, like the model. */
+const STEEL_COLOR = "#c9ccce";
+
 /** Give a piece's footprint its visible top color in the small plan. */
 export function furniturePlanColor(f: Furniture, palette: Palette): string {
+  if (f.type === "range") return STEEL_COLOR;
   const fabricTypes: FurnitureType[] = ["bed", "chair", "armchair", "ottoman", "rug", "curtains", "sofa", "cornerSofa", "lamp", "officeChair"];
-  const stoneTypes: FurnitureType[] = ["stairs", "paving", "kitchenCounter"];
-  const ceramicTypes: FurnitureType[] = ["fridge", "washer", "toilet", "bathtub", "shower"];
+  const stoneTypes: FurnitureType[] = ["stairs", "paving", "kitchenCounter", "dishwasher"];
+  const ceramicTypes: FurnitureType[] = ["fridge", "washer", "toilet", "bathtub", "shower", "microwave"];
   const key = f.type === "plant" || f.type === "tree" || f.type === "shrub" ? "leaves"
     : stoneTypes.includes(f.type) || (f.type === "table" && f.dimensions.height < COFFEE_TABLE_MAX_H) ? "stone"
     : ceramicTypes.includes(f.type) ? "ceramic"

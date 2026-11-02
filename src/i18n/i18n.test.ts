@@ -4,6 +4,7 @@ import { SUNLIT_STUDY } from "../lib/roomTemplates";
 import { SAMPLE_LAYOUT } from "../lib/sampleLayout";
 import { suggestPalettes } from "../lib/palettes";
 import { VILLA_PROJECT } from "../lib/villaTemplate";
+import { ADU_PROJECT } from "../lib/aduTemplate";
 import { selectActiveRoom, useEditor } from "../store/editorStore";
 import type { Furniture } from "../types";
 import { getLang, setLang } from ".";
@@ -18,6 +19,7 @@ describe("bundled names", () => {
   const chinese = [
     SUNLIT_STUDY.name, ...named(SUNLIT_STUDY.furniture), ...named(SUNLIT_STUDY.openings),
     VILLA_PROJECT.name, ...VILLA_PROJECT.rooms.flatMap((r) => [r.name, ...named(r.furniture), ...named(r.openings)]),
+    ADU_PROJECT.name, ...ADU_PROJECT.rooms.flatMap((r) => [r.name, ...named(r.furniture), ...named(r.openings)]),
   ];
   const english = [SAMPLE_LAYOUT.projectName, ...named(SAMPLE_LAYOUT.furniture), ...named(SAMPLE_LAYOUT.openings)];
 

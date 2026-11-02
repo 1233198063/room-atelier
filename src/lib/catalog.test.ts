@@ -59,6 +59,23 @@ describe("checks for the new pieces", () => {
     expect(keys(checkLayout(room, [desk, chair, table, seat], [window_]), "overlap")).toHaveLength(0);
   });
 
+  it("hangs wall cabinets and a microwave over the counters without an overlap", () => {
+    const counter = piece("kitchenCounter", 1.2, 0.3, [2.4, 0.6, 0.85]);
+    const range = piece("range", 2.8, 0.33);
+    const upper: Furniture = { ...piece("wallCabinet", 1.2, 0.165, [2.4, 0.33, 0.76]), position: [1.2, 1.45, 0.165] };
+    const microwave: Furniture = { ...piece("microwave", 2.8, 0.2), position: [2.8, 1.45, 0.2] };
+    expect(keys(checkLayout(room, [counter, range, upper, microwave], [window_]), "overlap")).toHaveLength(0);
+    const low: Furniture = { ...upper, position: [1.2, 0.5, 0.165] };
+    expect(keys(checkLayout(room, [counter, low], [window_]), "overlap")).toHaveLength(1);
+  });
+
+  it("wants room in front of an oven or dishwasher door", () => {
+    const range = piece("range", 1, 0.33), dishwasher = piece("dishwasher", 2, 0.31);
+    const island = piece("kitchenCounter", 1.5, 1.05, [2, 0.6, 0.9], 180);
+    const issues = keys(checkLayout(room, [range, dishwasher, island], [window_]), "opening-space");
+    expect(issues.map((i) => i.targets)).toEqual([[range.id, island.id], [dishwasher.id, island.id]]);
+  });
+
   it("leaves a wall-hung TV out of floor checks", () => {
     const stand = piece("dresser", 2, 0.25, [2, 0.4, 0.5]);
     const tv: Furniture = { ...piece("tv", 2, 0.04), position: [2, 0.85, 0.04] };

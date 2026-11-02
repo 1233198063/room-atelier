@@ -24,7 +24,7 @@ export type FurnitureType = "bed" | "desk" | "chair" | "cabinet" | "dresser" | "
   | "gallery" | "spiralStair" | "stairs"
   | "tree" | "shrub" | "paving"
   | "cornerSofa" | "roundTable" | "tv" | "officeChair"
-  | "fridge" | "washer" | "kitchenCounter"
+  | "fridge" | "washer" | "kitchenCounter" | "range" | "wallCabinet" | "dishwasher" | "microwave"
   | "toilet" | "vanity" | "bathtub" | "shower";
 
 export type FurnitureColor = "wood" | "woodDark" | "fabric" | "accent" | "metal" | "pot" | "leaves" | "stone" | "ceramic";
@@ -156,19 +156,28 @@ export interface RoomTemplate extends Omit<RoomContents, "palette">, RoomStructu
 export interface ProjectRoom extends RoomContents, RoomStructure {
   id: string;
   name: string;
+  /** The building this room belongs to, if any (see Layout.buildings). */
+  buildingId?: string;
   /** World position of the room's local back-left corner, in meters (X, Z). */
   position: [number, number];
   /** Rotation around Y, in degrees. */
   rotation: number;
 }
 
-/** Several rooms added together, keeping their relative placement (a house and its garden). */
+/** A named group of rooms that make up one building; rooms point to it by id. */
+export interface Building {
+  id: string;
+  name: string;
+}
+
+/** Several rooms added together, keeping their relative placement (a house and its garden). They become one building. */
 export interface ProjectTemplate {
   name: string;
   rooms: (RoomTemplate & Pick<ProjectRoom, "position" | "rotation">)[];
 }
 
-export type RoomDisplay = "single" | "all";
+/** Show the selected room alone, its building (rooms in place), or every room. */
+export type RoomDisplay = "single" | "building" | "all";
 /** Together view: cut walls away like a dollhouse, or show other rooms closed with their roofs. */
 export type WallView = "cutaway" | "exterior";
 
@@ -180,6 +189,8 @@ export interface Layout {
   roomDisplay: RoomDisplay;
   /** Added with multi-level projects; older saves use the cutaway view. */
   wallView?: WallView;
+  /** Added with building groups; older saves have none. Every building has at least one room. */
+  buildings?: Building[];
 }
 
 export type ViewMode = "perspective" | "top";

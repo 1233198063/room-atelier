@@ -25,7 +25,7 @@ import { Artwork, Easel, Screen } from "./models/Studio";
 import { Gallery, SpiralStair, Stairs } from "./models/Structure";
 import { Paving, Shrub, Tree } from "./models/Garden";
 import { CornerSofa, OfficeChair, RoundTable, Tv } from "./models/Home";
-import { Fridge, KitchenCounter, Washer } from "./models/Kitchen";
+import { Dishwasher, Fridge, KitchenCounter, Microwave, Range, WallCabinet, Washer } from "./models/Kitchen";
 import { Bathtub, Shower, Toilet, Vanity } from "./models/Bathroom";
 
 const MODELS: Record<FurnitureType, ComponentType<Dimensions>> = {
@@ -60,6 +60,10 @@ const MODELS: Record<FurnitureType, ComponentType<Dimensions>> = {
   fridge: Fridge,
   washer: Washer,
   kitchenCounter: KitchenCounter,
+  range: Range,
+  wallCabinet: WallCabinet,
+  dishwasher: Dishwasher,
+  microwave: Microwave,
   toilet: Toilet,
   vanity: Vanity,
   bathtub: Bathtub,

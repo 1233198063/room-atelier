@@ -355,7 +355,7 @@ export function FloorPlanDialog({ onClose }: { onClose: () => void }) {
   const create = () => {
     if (!metersPerPixel || !buildable.length) return;
     const project = planToProject(buildable.map(({ name, rect, openWalls }) => ({ name: name.trim() || text.defaults.room, rect, openWalls })),
-      metersPerPixel, fromCm(heightCm), t.title, openings);
+      metersPerPixel, fromCm(heightCm), text.defaults.building, openings);
     addProject(project, { replace });
     onClose();
   };

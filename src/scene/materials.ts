@@ -37,6 +37,8 @@ export const MATERIALS = {
   iron: new MeshStandardMaterial({ color: "#2f2a26", roughness: 0.55, metalness: 0.4 }),
   /** Lamp shades glow from inside; the shade color tints the glow. */
   shade: new MeshStandardMaterial({ color: "#f6ead5", roughness: 0.9, emissive: "#ffd9a0", emissiveIntensity: 0.55, side: DoubleSide }),
+  /** Under-cabinet strip lights: a warm glow that doesn't follow the palette. */
+  glow: new MeshStandardMaterial({ color: "#fff6e6", emissive: "#ffe4b8", emissiveIntensity: 0.9, side: DoubleSide }),
   /** Painted door casing — a warm white a shade off the walls. */
   trim: new MeshStandardMaterial({ color: "#efe8dc", roughness: 0.6 }),
   glass: new MeshStandardMaterial({
