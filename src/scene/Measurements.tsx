@@ -4,7 +4,8 @@ import { selectActiveRoom } from "../store/editorStore";
 import { Line } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import { useState } from "react";
-import { footprintBounds, toCm } from "../lib/geometry";
+import { useLength } from "../i18n";
+import { footprintBounds } from "../lib/geometry";
 import { openingSpan, wallLength, wallToWorld } from "../lib/openings";
 import { selectSelected, selectSelectedOpening, useEditor } from "../store/editorStore";
 import { ACCENT, INK_MUTED } from "./materials";
@@ -15,11 +16,6 @@ type P3 = [number, number, number];
 const Y = 0.012; // just above the floor, to avoid z-fighting
 const TICK = 0.08;
 
-const formatCm = (m: number) => {
-  const cm = toCm(m);
-  return Number.isInteger(cm) ? `${cm}` : cm.toFixed(1);
-};
-
 interface DimensionLineProps {
   from: P3;
   to: P3;
@@ -29,13 +25,14 @@ interface DimensionLineProps {
 
 /** A CAD-style dimension: a line with perpendicular end ticks and a length label. */
 function DimensionLine({ from, to, color, muted }: DimensionLineProps) {
+  const len = useLength();
   const dx = to[0] - from[0];
   const dz = to[2] - from[2];
-  const len = Math.hypot(dx, dz);
-  if (len < 0.005) return null;
+  const length = Math.hypot(dx, dz);
+  if (length < 0.005) return null;
   // Half a tick, perpendicular to the line on the floor plane.
-  const px = (-dz / len) * (TICK / 2);
-  const pz = (dx / len) * (TICK / 2);
+  const px = (-dz / length) * (TICK / 2);
+  const pz = (dx / length) * (TICK / 2);
   const tick = (p: P3): P3[] => [
     [p[0] - px, p[1], p[2] - pz],
     [p[0] + px, p[1], p[2] + pz],
@@ -49,7 +46,7 @@ function DimensionLine({ from, to, color, muted }: DimensionLineProps) {
       <Line points={tick(to)} color={color} lineWidth={1.25} />
       <ScreenLabel
         position={mid}
-        text={`${formatCm(len)} cm`}
+        text={len.format(length)}
         className={muted ? "dim-label dim-label--muted" : "dim-label"}
       />
     </group>

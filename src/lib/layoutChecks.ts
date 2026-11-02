@@ -1,9 +1,12 @@
+import { MESSAGES, type Lang } from "../i18n/messages";
+import { localizeName } from "../i18n/names";
 import type { Furniture, Opening, Palette, Room } from "../types";
-import { DECOR_TYPES, MOVABLE_TYPES } from "./catalog";
-import { degToRad, footprintCorners, furnitureSurfaceHeight, toCm } from "./geometry";
+import { DECOR_TYPES, GREENERY_TYPES, MOVABLE_TYPES, SEAT_TYPES, TABLE_TYPES } from "./catalog";
+import { degToRad, footprintCorners, furnitureSurfaceHeight } from "./geometry";
 import { openingSpan, wallToWorld } from "./openings";
 import { contrast, glazingRatio, luminance, PALETTE_RULES } from "./palettes";
 import { polygonsOverlap, rayToPolygon, rayToRoomEdge, type Pt } from "./polygon";
+import { formatLength, type LengthUnit } from "./units";
 
 /**
  * Layout checks: a "linter" for rooms.
@@ -31,6 +34,10 @@ export const RULES = {
   seatSpace: 0.7,
   /** In front of drawers or cabinet doors, to open them and stand. */
   openingSpace: 0.6,
+  /** In front of a kitchen counter, to work and open its lower doors. */
+  workSpace: 0.8,
+  /** In front of a toilet. */
+  toiletSpace: 0.5,
   /** Beside a bed, to walk and get in comfortably. */
   bedSide: 0.6,
   /** Less than this beside a bed and that side is unusable. */
@@ -41,7 +48,6 @@ export const RULES = {
   windowZone: 0.35,
 } as const;
 
-const fmt = (m: number) => `${Math.max(0, Math.round(toCm(m)))} cm`;
 const bottom = (f: Furniture) => f.position[1];
 const top = (f: Furniture) => f.position[1] + f.dimensions.height;
 const isMovable = (f: Furniture) => MOVABLE_TYPES.includes(f.type);
@@ -134,8 +140,37 @@ function windowZone(o: Opening, room: Room): Pt[] {
   ];
 }
 
-export function checkLayout(room: Room, furniture: Furniture[], openings: Opening[]): Issue[] {
+/** What opens toward the front of a piece, if anything does. */
+function frontKind(f: Furniture): "doors" | "drawers" | "door" | null {
+  switch (f.type) {
+    case "cabinet": return f.dimensions.height > 1 ? "doors" : "drawers";
+    case "dresser": return "drawers";
+    case "fridge": case "vanity": return "doors";
+    case "washer": case "range": case "dishwasher": return "door";
+    default: return null;
+  }
+}
+
+export interface CheckContext {
+  /** Gardens and courtyards: open to the sky, so there are no daylight rules. */
+  outdoor?: boolean;
+  /** Language of the titles and details (default English). */
+  lang?: Lang;
+  /** Unit for the measured lengths in the details (default centimeters). */
+  unit?: LengthUnit;
+}
+
+/** Measured lengths read best whole: millimeters in mm, whole inches with feet and inches, centimeters otherwise (0.15 m, not 0.153 m). */
+const lengthFormatter = (unit: LengthUnit) => (m: number) =>
+  formatLength(Math.max(0, unit === "mm" ? m : unit === "ft" ? Math.round(m / 0.0254) * 0.0254 : Math.round(m * 100) / 100), unit);
+
+export function checkLayout(room: Room, furniture: Furniture[], openings: Opening[],
+  { outdoor = false, lang = "en", unit = "cm" }: CheckContext = {}): Issue[] {
   furniture = furniture.filter((f) => !DECOR_TYPES.includes(f.type));
+  const fmt = lengthFormatter(unit);
+  const m = MESSAGES[lang].checks;
+  const name = (item: { name: string }) => localizeName(item.name, lang);
+  const before = (blocker: Furniture | null) => (blocker ? name(blocker) : m.theWall);
   const issues: Issue[] = [];
   const polys = new Map(furniture.map((f) => [f.id, footprintCorners(f)]));
   const poly = (f: Furniture) => polys.get(f.id)!;
@@ -146,7 +181,8 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
       const a = furniture[i];
       const b = furniture[j];
       const types = new Set([a.type, b.type]);
-      if (types.has("chair") && (types.has("desk") || types.has("worktable"))) continue; // chairs tuck under tables
+      if (SEAT_TYPES.some((t) => types.has(t)) && TABLE_TYPES.some((t) => types.has(t))) continue; // chairs tuck under tables
+      if (GREENERY_TYPES.includes(a.type) && GREENERY_TYPES.includes(b.type)) continue;
       if (types.has("plant") && types.has("worktable")) {
         const plant = a.type === "plant" ? a : b, table = a.type === "worktable" ? a : b;
         if (bottom(plant) >= furnitureSurfaceHeight(table) - 0.005) continue;
@@ -155,8 +191,8 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
       issues.push({
         key: `overlap:${a.id}:${b.id}`,
         severity: "warning",
-        title: `${a.name} and ${b.name} overlap`,
-        detail: "Two pieces can't share the same floor space — move one of them.",
+        title: m.overlapTitle(name(a), name(b)),
+        detail: m.overlapDetail,
         targets: [b.id, a.id],
       });
     }
@@ -171,8 +207,8 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
         issues.push({
           key: `door-swing:${o.id}:${f.id}`,
           severity: "warning",
-          title: `${f.name} blocks ${o.name}`,
-          detail: `The door needs a clear ${fmt(o.width)} quarter-circle on the floor to swing open.`,
+          title: m.blocksTitle(name(f), name(o)),
+          detail: m.doorDetail(fmt(o.width)),
           targets: [f.id, o.id],
         });
       }
@@ -185,8 +221,8 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
         issues.push({
           key: `window-blocked:${o.id}:${f.id}`,
           severity: "warning",
-          title: `${f.name} blocks ${o.name}`,
-          detail: `It stands ${fmt(top(f))} tall in front of a window with a ${fmt(o.elevation)} sill.`,
+          title: m.blocksTitle(name(f), name(o)),
+          detail: m.windowDetail(fmt(top(f)), fmt(o.elevation)),
           targets: [f.id, o.id],
         });
       }
@@ -204,25 +240,44 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
         issues.push({
           key: `seat-space:${f.id}`,
           severity: "warning",
-          title: `Tight seat at ${f.name}`,
-          detail: `Pulling out a chair needs about ${fmt(RULES.seatSpace)}; there's ${fmt(distance)} before ${blocker ? blocker.name : "the wall"}.`,
+          title: m.seatTitle(name(f)),
+          detail: m.seatDetail(fmt(RULES.seatSpace), fmt(distance), before(blocker)),
           targets: blocker ? [f.id, blocker.id] : [f.id],
         });
       }
     }
 
-    if (f.type === "dresser" || f.type === "cabinet") {
+    const front = frontKind(f);
+    if (front) {
       const { distance, blocker } = clearance(f, "front", room, obstacles, [0.1, 0.9]);
       if (distance < RULES.openingSpace) {
-        const fronts = f.type === "cabinet" && f.dimensions.height > 1 ? "doors" : "drawers";
+        const fronts = m.fronts[front];
         const facesWall = !blocker && distance < 0.05;
         issues.push({
           key: `opening-space:${f.id}`,
           severity: "warning",
-          title: facesWall ? `${f.name} faces the wall` : `${f.name} can't open fully`,
+          title: facesWall ? m.facesWallTitle(name(f)) : m.cantOpenTitle(name(f)),
           detail: facesWall
-            ? `Its ${fronts} are against the wall — rotate it 180°.`
-            : `Its ${fronts} need about ${fmt(RULES.openingSpace)} in front; there's ${fmt(distance)} before ${blocker ? blocker.name : "the wall"}.`,
+            ? m.facesWallDetail(fronts)
+            : m.cantOpenDetail(fronts, fmt(RULES.openingSpace), fmt(distance), before(blocker)),
+          targets: blocker ? [f.id, blocker.id] : [f.id],
+        });
+      }
+    }
+
+    if (f.type === "kitchenCounter" || f.type === "toilet") {
+      const counter = f.type === "kitchenCounter";
+      const need = counter ? RULES.workSpace : RULES.toiletSpace;
+      // Counters joined into an L meet at the corner; that leg is not in the aisle.
+      const grown = footprintCorners({ ...f, dimensions: { ...f.dimensions, width: f.dimensions.width + 0.1, depth: f.dimensions.depth + 0.1 } });
+      const blocking = counter ? obstacles.filter((o) => o.type !== "kitchenCounter" || !polygonsOverlap(grown, poly(o))) : obstacles;
+      const { distance, blocker } = clearance(f, "front", room, blocking, counter ? [0.1, 0.9] : [0.3, 0.7]);
+      if (distance < need) {
+        issues.push({
+          key: `front-space:${f.id}`,
+          severity: "warning",
+          title: counter ? m.workTitle(name(f)) : m.toiletTitle(name(f)),
+          detail: (counter ? m.workDetail : m.toiletDetail)(fmt(need), fmt(distance), before(blocker)),
           targets: blocker ? [f.id, blocker.id] : [f.id],
         });
       }
@@ -238,8 +293,8 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
         issues.push({
           key: `bed-access:${f.id}`,
           severity: "warning",
-          title: `${f.name} is hard to get into`,
-          detail: `Both long sides are boxed in (${fmt(left.distance)} and ${fmt(right.distance)} free).`,
+          title: m.bedHardTitle(name(f)),
+          detail: m.bedHardDetail(fmt(left.distance), fmt(right.distance)),
           targets: [f.id],
         });
       } else if ((double ? tight.distance : roomy.distance) < RULES.bedSide) {
@@ -247,10 +302,10 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
         issues.push({
           key: `bed-access:${f.id}`,
           severity: "tip",
-          title: `Tight side of ${f.name}`,
+          title: m.bedTightTitle(name(f)),
           detail: double
-            ? `One side has ${fmt(side.distance)} free — ${fmt(RULES.bedSide)} or more on both sides makes a double bed easy to share.`
-            : `The open side has ${fmt(side.distance)} — ${fmt(RULES.bedSide)} or more is comfortable.`,
+            ? m.bedTightDouble(fmt(side.distance), fmt(RULES.bedSide))
+            : m.bedTightSingle(fmt(side.distance), fmt(RULES.bedSide)),
           targets: side.blocker ? [f.id, side.blocker.id] : [f.id],
         });
       }
@@ -259,13 +314,15 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
 
   // ── Daylight ──────────────────────────────────────────────────────────
   const windows = openings.filter((o) => o.type === "window");
-  if (windows.length === 0) {
+  if (outdoor) {
+    // Daylight comes from above.
+  } else if (windows.length === 0) {
     if (furniture.length > 0) {
       issues.push({
         key: "no-window",
         severity: "tip",
-        title: "No windows yet",
-        detail: "Add a window from the library — daylight decides where the desk and plants should go.",
+        title: m.noWindowTitle,
+        detail: m.noWindowDetail,
         targets: [],
       });
     }
@@ -278,11 +335,8 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
       issues.push({
         key: `daylight:${f.id}`,
         severity: "tip",
-        title: f.type === "desk" ? `${f.name} is far from daylight` : `${f.name} is far from a window`,
-        detail:
-          f.type === "desk"
-            ? `The nearest window is ${fmt(d)} away. Desks work best near a window, with light from the side.`
-            : `It's ${fmt(d)} from the nearest window. Most houseplants want bright, indirect light within about ${fmt(RULES.daylight)}.`,
+        title: f.type === "desk" ? m.deskDaylightTitle(name(f)) : m.plantDaylightTitle(name(f)),
+        detail: f.type === "desk" ? m.deskDaylightDetail(fmt(d)) : m.plantDaylightDetail(fmt(d), fmt(RULES.daylight)),
         targets: [f.id],
       });
     }
@@ -295,28 +349,29 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
  * Color tips: rules about the palette in the context of this room. They're
  * tips, never warnings — taste is allowed to break rules.
  */
-export function checkPalette(palette: Palette, room: Room, openings: Opening[]): Issue[] {
+export function checkPalette(palette: Palette, room: Room, openings: Opening[], { outdoor = false, lang = "en" }: CheckContext = {}): Issue[] {
   const issues: Issue[] = [];
+  const m = MESSAGES[lang].checks;
   const ratio = (a: string, b: string) => contrast(a, b).toFixed(2);
 
   if (contrast(palette.wall, palette.wood) < 1.2) {
     issues.push({
       key: "palette-blend",
       severity: "tip",
-      title: "Furniture blends into the walls",
-      detail: `Walls and wood are nearly the same lightness (contrast ${ratio(palette.wall, palette.wood)}:1). A deeper wood or a warmer wall adds depth.`,
+      title: m.blendTitle,
+      detail: m.blendDetail(ratio(palette.wall, palette.wood)),
       targets: [],
     });
   }
 
   const small = room.width * room.depth < PALETTE_RULES.smallRoom;
-  const dim = glazingRatio(room, openings) < PALETTE_RULES.dimGlazing;
+  const dim = !outdoor && glazingRatio(room, openings) < PALETTE_RULES.dimGlazing;
   if (luminance(palette.wall) < 0.4 && (small || dim)) {
     issues.push({
       key: "palette-dark-walls",
       severity: "tip",
-      title: `Dark walls in a ${small ? "compact" : "dim"} room`,
-      detail: "Dark walls absorb light and pull the room in. Fine for a cozy mood — otherwise try a lighter wall color.",
+      title: m.darkWallsTitle(small),
+      detail: m.darkWallsDetail,
       targets: [],
     });
   }
@@ -325,8 +380,8 @@ export function checkPalette(palette: Palette, room: Room, openings: Opening[]):
     issues.push({
       key: "palette-accent",
       severity: "tip",
-      title: "The accent color doesn't stand out",
-      detail: `It's close to the textiles (contrast ${ratio(palette.accent, palette.fabric)}:1). An accent works best clearly lighter or darker than its surroundings.`,
+      title: m.accentTitle,
+      detail: m.accentDetail(ratio(palette.accent, palette.fabric)),
       targets: [],
     });
   }

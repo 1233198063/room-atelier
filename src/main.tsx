@@ -6,9 +6,11 @@ import "./styles.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import { startI18n } from "./i18n";
 import { saveNow, startAutosave } from "./store/autosave";
 import { addRoomFromLink } from "./store/roomTemplateLink";
 
+startI18n();
 startAutosave();
 
 // Consume the explicit create-room link once, outside StrictMode's effect replay.

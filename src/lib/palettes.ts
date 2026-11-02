@@ -1,102 +1,66 @@
+import { MESSAGES, type Lang } from "../i18n/messages";
 import type { Opening, Palette, PaletteColor, Room } from "../types";
+import { formatArea, type LengthUnit } from "./units";
 
+/** Names and descriptions (why each combination works) are in i18n, by palette id. */
 export interface PalettePreset {
   palette: Palette;
-  label: string;
-  /** Why this combination works — shown when it's selected. */
-  description: string;
 }
 
-const preset = (id: string, label: string, description: string, colors: Omit<Palette, "id">): PalettePreset => ({
-  palette: { id, ...colors },
-  label,
-  description,
-});
+const preset = (id: string, colors: Omit<Palette, "id">): PalettePreset => ({ palette: { id, ...colors } });
 
 export const PALETTE_PRESETS: PalettePreset[] = [
-  preset(
-    "warm-oak",
-    "Warm Oak",
-    "Light oak on warm white, with a terracotta throw. Calm and bright; works in almost any room.",
-    {
-      wall: "#f4efe7",
-      floor: "#efd9b8",
-      wood: "#d9b88f",
-      woodDark: "#a98257",
-      fabric: "#f3eee5",
-      accent: "#b88b72",
-      metal: "#b8955c",
-    },
-  ),
-  preset(
-    "nordic",
-    "Nordic",
-    "Pale birch, cool white and a dusty blue accent. Reflects the most light, so small or dim rooms feel larger.",
-    {
-      wall: "#f5f5f2",
-      floor: "#ece3d5",
-      wood: "#e6d4b6",
-      woodDark: "#c4ab86",
-      fabric: "#eff0ec",
-      accent: "#8ea2b4",
-      metal: "#c4c2bc",
-    },
-  ),
-  preset(
-    "japandi",
-    "Japandi",
-    "Greige walls, natural oak against dark-stained wood, moss green and black iron. Quiet and grounded.",
-    {
-      wall: "#ebe5da",
-      floor: "#dcc6a4",
-      wood: "#cdab80",
-      woodDark: "#5a4a3d",
-      fabric: "#e6ded1",
-      accent: "#7e8c6e",
-      metal: "#3b3632",
-    },
-  ),
-  preset(
-    "mid-century",
-    "Mid-century",
-    "Walnut on cream with a mustard accent and brass. Rich and warm; deeper woods need a bright room.",
-    {
-      wall: "#f2e9d9",
-      floor: "#caa078",
-      wood: "#a8744a",
-      woodDark: "#6f4a30",
-      fabric: "#efe6d6",
-      accent: "#d29a3c",
-      metal: "#b8955c",
-    },
-  ),
-  preset(
-    "plaster-clay",
-    "Plaster & Clay",
-    "Blush lime-plaster walls, honey wood and clay red. Mediterranean warmth, best with good daylight.",
-    {
-      wall: "#efdccb",
-      floor: "#e2c7a4",
-      wood: "#d2ad80",
-      woodDark: "#93704e",
-      fabric: "#f3ebe1",
-      accent: "#b4614a",
-      metal: "#ad8a57",
-    },
-  ),
+  preset("warm-oak", {
+    wall: "#f4efe7",
+    floor: "#efd9b8",
+    wood: "#d9b88f",
+    woodDark: "#a98257",
+    fabric: "#f3eee5",
+    accent: "#b88b72",
+    metal: "#b8955c",
+  }),
+  preset("nordic", {
+    wall: "#f5f5f2",
+    floor: "#ece3d5",
+    wood: "#e6d4b6",
+    woodDark: "#c4ab86",
+    fabric: "#eff0ec",
+    accent: "#8ea2b4",
+    metal: "#c4c2bc",
+  }),
+  preset("japandi", {
+    wall: "#ebe5da",
+    floor: "#dcc6a4",
+    wood: "#cdab80",
+    woodDark: "#5a4a3d",
+    fabric: "#e6ded1",
+    accent: "#7e8c6e",
+    metal: "#3b3632",
+  }),
+  preset("mid-century", {
+    wall: "#f2e9d9",
+    floor: "#caa078",
+    wood: "#a8744a",
+    woodDark: "#6f4a30",
+    fabric: "#efe6d6",
+    accent: "#d29a3c",
+    metal: "#b8955c",
+  }),
+  preset("plaster-clay", {
+    wall: "#efdccb",
+    floor: "#e2c7a4",
+    wood: "#d2ad80",
+    woodDark: "#93704e",
+    fabric: "#f3ebe1",
+    accent: "#b4614a",
+    metal: "#ad8a57",
+  }),
 ];
 
 export const DEFAULT_PALETTE: Palette = PALETTE_PRESETS[0].palette;
 
-export const PALETTE_COLORS: { key: PaletteColor; label: string; hint: string }[] = [
-  { key: "wall", label: "Walls", hint: "≈60% of what you see" },
-  { key: "floor", label: "Floor", hint: "The base everything sits on" },
-  { key: "wood", label: "Wood", hint: "≈30%: furniture tops and fronts" },
-  { key: "woodDark", label: "Dark wood", hint: "Legs, carcasses, plinths" },
-  { key: "fabric", label: "Textiles", hint: "Bedding and cushions" },
-  { key: "accent", label: "Accent", hint: "≈10%: the throw and small details" },
-  { key: "metal", label: "Hardware", hint: "Handles" },
-];
+/** The palette's color roles, in the order the style panel lists them. */
+export const PALETTE_COLORS: PaletteColor[] = ["wall", "floor", "wood", "woodDark", "fabric", "accent", "metal"];
 
 // ── Color math ───────────────────────────────────────────────────────────
 
@@ -137,34 +101,35 @@ export function glazingRatio(room: Room, openings: Opening[]): number {
  * Which presets suit this room, and why. Based on two facts the editor
  * already knows: floor area and how much window there is.
  */
-export function suggestPalettes(room: Room, openings: Opening[]): Map<string, string> {
+export function suggestPalettes(room: Room, openings: Opening[], lang: Lang = "en", unit: LengthUnit = "cm"): Map<string, string> {
+  const reasons = MESSAGES[lang].style.reasons;
   const area = room.width * room.depth;
   const glazing = glazingRatio(room, openings);
   const pct = Math.floor(glazing * 100); // round down, so 19.8% never reads as the 20% threshold
 
   if (glazing < PALETTE_RULES.dimGlazing) {
-    const why = `Windows are ${pct}% of the floor area (under 10% reads as dim) — pale colors bounce the light that comes in.`;
+    const why = reasons.dim(pct);
     return new Map([
       ["nordic", why],
       ["warm-oak", why],
     ]);
   }
   if (area < PALETTE_RULES.smallRoom) {
-    const why = `At ${area.toFixed(1)} m² the room is compact — light walls and pale wood make it feel larger.`;
+    const why = reasons.compact(formatArea(area, unit));
     return new Map([
       ["nordic", why],
       ["warm-oak", why],
     ]);
   }
   if (glazing >= PALETTE_RULES.brightGlazing) {
-    const why = `Plenty of daylight (windows are ${pct}% of the floor area), so deeper woods and stronger accents won't feel heavy.`;
+    const why = reasons.bright(pct);
     return new Map([
       ["mid-century", why],
       ["japandi", why],
       ["plaster-clay", why],
     ]);
   }
-  const why = `A mid-sized room with moderate daylight (${pct}% glazing) — warm, medium-light palettes keep it balanced.`;
+  const why = reasons.balanced(pct);
   return new Map([
     ["warm-oak", why],
     ["plaster-clay", why],

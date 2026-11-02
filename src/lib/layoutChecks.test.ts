@@ -135,3 +135,13 @@ describe("checkLayout", () => {
     expect(keys(checkLayout({ ...room, width: 6 }, [{ ...desk, position: [5, 0, 2.5] }], [far]), "daylight")).toHaveLength(1);
   });
 });
+
+describe("outdoor rooms", () => {
+  it("skips window and daylight tips under the open sky", () => {
+    const room = { width: 10, depth: 10, height: 6 };
+    const plant = { id: "p", type: "plant" as const, name: "Pot", position: [5, 0, 5] as [number, number, number], rotation: 0,
+      dimensions: { width: 0.5, depth: 0.5, height: 1 } };
+    expect(checkLayout(room, [plant], []).map((i) => i.key)).toContain("no-window");
+    expect(checkLayout(room, [plant], [], { outdoor: true })).toEqual([]);
+  });
+});

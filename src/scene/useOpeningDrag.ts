@@ -12,7 +12,7 @@ import type { Room, ViewMode, Wall } from "../types";
 export function roomLocalRay(ray: Ray, placement: Placement): Ray {
   const [x, z] = worldToLocal([ray.origin.x, ray.origin.z], placement);
   const a = placement.rotation * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
-  return new Ray(new Vector3(x, ray.origin.y, z), new Vector3(
+  return new Ray(new Vector3(x, ray.origin.y - (placement.elevation ?? 0), z), new Vector3(
     ray.direction.x * c - ray.direction.z * s, ray.direction.y,
     ray.direction.x * s + ray.direction.z * c));
 }

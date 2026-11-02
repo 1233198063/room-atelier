@@ -9,8 +9,6 @@ export const PLAN_CUT_HEIGHT = 1.2;
 
 export interface OpeningCatalogEntry {
   type: OpeningType;
-  label: string;
-  description: string;
   defaults: { width: number; height: number; elevation: number };
   min: { width: number; height: number };
   max: { width: number; height: number };
@@ -19,19 +17,16 @@ export interface OpeningCatalogEntry {
 export const OPENING_CATALOG: Record<OpeningType, OpeningCatalogEntry> = {
   door: {
     type: "door",
-    label: "Door",
-    description: "Hinged door, opens into the room",
     defaults: { width: 0.9, height: 2.1, elevation: 0 },
     min: { width: 0.6, height: 1.8 },
     max: { width: 1.8, height: 2.6 },
   },
   window: {
     type: "window",
-    label: "Window",
-    description: "Window with an interior sill",
     defaults: { width: 1.2, height: 1.3, elevation: 0.9 },
     min: { width: 0.4, height: 0.3 },
-    max: { width: 4, height: 2.6 },
+    // Tall enough for double-height glazing; the room height still caps it.
+    max: { width: 4, height: 6 },
   },
 };
 
@@ -185,7 +180,7 @@ export function openingClearances(o: Opening, room: Room): { start: number; end:
   return { start: a0, end: wallLength(o.wall, room) - a1 };
 }
 
-/** Human names for the two ends of a wall, in the app's absolute room directions. */
-export function wallEnds(wall: Wall): { start: string; end: string } {
-  return runsAlongX(wall) ? { start: "left wall", end: "right wall" } : { start: "back wall", end: "front wall" };
+/** The walls at the two ends of a wall, in the app's absolute room directions. */
+export function wallEnds(wall: Wall): { start: Wall; end: Wall } {
+  return runsAlongX(wall) ? { start: "left", end: "right" } : { start: "back", end: "front" };
 }

@@ -1,6 +1,7 @@
 import { Edges } from "@react-three/drei";
 import { useThree } from "@react-three/fiber";
 import { memo, useState, type ComponentType } from "react";
+import { useName, useT } from "../i18n";
 import { degToRad, furnitureSurfaceHeight } from "../lib/geometry";
 import { useEditor } from "../store/editorStore";
 import type { Dimensions, Furniture, FurnitureType } from "../types";
@@ -19,6 +20,13 @@ import { Armchair, Ottoman } from "./models/Armchair";
 import { Rug } from "./models/Rug";
 import { Curtains } from "./models/Curtains";
 import { ScreenLabel } from "./ScreenLabel";
+import { Lamp, Sofa, Table } from "./models/Living";
+import { Artwork, Easel, Screen } from "./models/Studio";
+import { Gallery, SpiralStair, Stairs } from "./models/Structure";
+import { Paving, Shrub, Tree } from "./models/Garden";
+import { CornerSofa, OfficeChair, RoundTable, Tv } from "./models/Home";
+import { Dishwasher, Fridge, KitchenCounter, Microwave, Range, WallCabinet, Washer } from "./models/Kitchen";
+import { Bathtub, Shower, Toilet, Vanity } from "./models/Bathroom";
 
 const MODELS: Record<FurnitureType, ComponentType<Dimensions>> = {
   bookcase: Bookcase,
@@ -33,6 +41,33 @@ const MODELS: Record<FurnitureType, ComponentType<Dimensions>> = {
   cabinet: Cabinet,
   dresser: Dresser,
   plant: Plant,
+  sofa: Sofa,
+  table: Table,
+  lamp: Lamp,
+  easel: Easel,
+  screen: Screen,
+  artwork: Artwork,
+  gallery: Gallery,
+  spiralStair: SpiralStair,
+  stairs: Stairs,
+  tree: Tree,
+  shrub: Shrub,
+  paving: Paving,
+  cornerSofa: CornerSofa,
+  roundTable: RoundTable,
+  tv: Tv,
+  officeChair: OfficeChair,
+  fridge: Fridge,
+  washer: Washer,
+  kitchenCounter: KitchenCounter,
+  range: Range,
+  wallCabinet: WallCabinet,
+  dishwasher: Dishwasher,
+  microwave: Microwave,
+  toilet: Toilet,
+  vanity: Vanity,
+  bathtub: Bathtub,
+  shower: Shower,
 };
 
 const noRaycast = () => null;
@@ -51,6 +86,8 @@ interface Props {
  */
 export const FurnitureItem = memo(function FurnitureItem({ furniture: f, selected, flagged }: Props) {
   const editing = useEditor((s) => s.mode === "edit");
+  const t = useT();
+  const name = useName();
   const dropTarget = useEditor((s) => s.plantDropTargetId === f.id);
   const gl = useThree((s) => s.gl);
   const [hovered, setHovered] = useState(false);
@@ -87,7 +124,7 @@ export const FurnitureItem = memo(function FurnitureItem({ furniture: f, selecte
           <meshBasicMaterial color="#4f7a4a" transparent opacity={0.25} depthWrite={false} />
         </mesh>
         <ScreenLabel position={[f.position[0], furnitureSurfaceHeight(f) + 0.08, f.position[2]]}
-          text={`Place on ${f.name}`} className="dim-label" />
+          text={t.plants.placeOn(name(f.name))} className="dim-label" />
       </>}
 
       {outline && (
