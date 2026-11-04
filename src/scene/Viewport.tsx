@@ -2,7 +2,7 @@ import { Grid, Line } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
 import { useMemo } from "react";
 import { NeutralToneMapping } from "three";
-import { useName } from "../i18n";
+import { useName, useT } from "../i18n";
 import { degToRad } from "../lib/geometry";
 import { gardenHoles, roomElevation, roomKind, type Point2 } from "../lib/rooms";
 import { selectCombined, selectVisibleRooms, useEditor } from "../store/editorStore";
@@ -16,6 +16,7 @@ import { RoomShell } from "./RoomShell";
 import { Roof } from "./Roof";
 import { ScreenLabel } from "./ScreenLabel";
 import { useFlaggedIds } from "./useFlaggedIds";
+import { useRoomDrag } from "./useRoomDrag";
 
 function RoomScene({ data, holes }: { data: ProjectRoom; holes: Point2[][] }) {
   const editing = useEditor((s) => s.mode === "edit");
@@ -25,6 +26,8 @@ function RoomScene({ data, holes }: { data: ProjectRoom; holes: Point2[][] }) {
   const selectedId = useEditor((s) => s.selectedId);
   const flagged = useFlaggedIds();
   const name = useName();
+  const t = useT().stage;
+  const dragRoom = useRoomDrag(data.id);
   const { room } = data;
   const placement = useMemo(() => combined ? { position: data.position, rotation: data.rotation, elevation: roomElevation(data) }
     : { position: [0, 0] as [number, number], rotation: 0, elevation: 0 }, [combined, data]);
@@ -46,8 +49,12 @@ function RoomScene({ data, holes }: { data: ProjectRoom; holes: Point2[][] }) {
         {combined && <Line points={[[0, 0.015, 0], [room.width, 0.015, 0], [room.width, 0.015, room.depth], [0, 0.015, room.depth], [0, 0.015, 0]]}
           color="#2f62c9" lineWidth={2} raycast={() => null} />}
       </>}
-      {combined && <ScreenLabel position={[room.width / 2, 0.04, room.depth / 2]} text={name(data.name)}
-        className={`room-label${active ? " is-active" : ""}`} />}
+      {/* While editing, the name is the handle that drags the room around. A garden surrounds its
+          buildings, so it's named by its back edge, clear of their labels. */}
+      {combined && <ScreenLabel position={[room.width / 2, 0.04, roomKind(data) === "garden" ? Math.min(1, room.depth / 4) : room.depth / 2]}
+        text={name(data.name)}
+        className={`room-label${active ? " is-active" : ""}${editing ? " is-draggable" : ""}`}
+        title={editing ? t.dragRoom(name(data.name)) : undefined} onPointerDown={editing ? dragRoom : undefined} />}
     </group>
   </RoomProvider>;
 }

@@ -90,7 +90,7 @@ export function StageOverlay() {
       )}
 
       <div className="overlay__bottom">
-        <span className="hint">{mode === "edit" ? (view === "top" ? t.hintTop : t.hintPerspective) : t.previewHint}</span>
+        <span className="hint">{mode === "edit" ? `${combined ? `${t.hintRooms} · ` : ""}${view === "top" ? t.hintTop : t.hintPerspective}` : t.previewHint}</span>
         <div className="overlay__actions">
           {mode === "preview" && view === "perspective" && (
             <button type="button" className="chip" onClick={() => setAutoRotate(!autoRotate)}>

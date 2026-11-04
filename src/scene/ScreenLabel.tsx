@@ -8,6 +8,9 @@ interface ScreenLabelProps {
   position: [number, number, number];
   text: string;
   className: string;
+  title?: string;
+  /** Makes the label a handle: it takes presses itself instead of letting them through to the scene. */
+  onPointerDown?: (e: PointerEvent) => void;
 }
 
 /**
@@ -18,7 +21,7 @@ interface ScreenLabelProps {
  * plain <div> there. This is the same idea as drei's <Html>, minus the nested
  * React root — the label is just a DOM node we position ourselves.
  */
-export function ScreenLabel({ position, text, className }: ScreenLabelProps) {
+export function ScreenLabel({ position, text, className, title, onPointerDown }: ScreenLabelProps) {
   const { placement } = useRoomScene();
   const host = useThree((s) => s.gl.domElement.parentElement);
   const el = useMemo(() => {
@@ -37,11 +40,22 @@ export function ScreenLabel({ position, text, className }: ScreenLabelProps) {
   useEffect(() => {
     el.textContent = text;
     el.className = className;
-  }, [el, text, className]);
+    el.title = title ?? "";
+  }, [el, text, className, title]);
+
+  useEffect(() => {
+    if (!onPointerDown) return;
+    el.style.pointerEvents = "auto";
+    el.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      el.style.pointerEvents = "none";
+      el.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [el, onPointerDown]);
 
   useFrame(({ camera, size }) => {
     const [wx, wz] = localToWorld([position[0], position[2]], placement);
-    point.set(wx, position[1], wz).project(camera);
+    point.set(wx, position[1] + (placement.elevation ?? 0), wz).project(camera);
     const x = (point.x * 0.5 + 0.5) * size.width;
     const y = (-point.y * 0.5 + 0.5) * size.height;
     el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
