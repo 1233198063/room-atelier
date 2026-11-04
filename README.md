@@ -62,7 +62,7 @@ AI floor-plan reading needs an Anthropic API key on the server: copy `.env.examp
 
 1. Choose **Add room** in the left sidebar. Select a room there or from the canvas dropdown to edit its contents. Click its name in the properties panel to rename it.
 2. Choose **Single room** to view only that room, **Building** to view the building it belongs to, or **Together** to see the assembled project. All three work in Edit and Preview modes.
-3. In Together/Edit mode, deselect furniture to see **Arrange rooms**. Drag any room in the small plan, use the X/Z and rotation fields, or choose a neighbor and click Left/Back/Front/Right. Focus a room in the small plan and use arrow keys for 1 cm nudges, or Shift+arrows for 10 cm.
+3. In Building or Together view (Edit mode), drag a room by its name label on the canvas, in 3D or in the plan. It snaps to the grid and to nearby rooms' edges; hold Alt to move freely. A click on the label just selects the room. The rooms stacked above the one you're editing step aside, and the selected room's label stays on top. Deselect furniture to see **Arrange rooms**: drag any room in the small plan, use the X/Z and rotation fields, or choose a neighbor and click Left/Back/Front/Right. Focus a room in the small plan and use arrow keys for 1 cm nudges, or Shift+arrows for 10 cm.
 4. Use **Frame all** (F) after precise placement to fit the entire layout. Each room keeps its furniture and openings in local coordinates when moved or rotated.
 
 To add the villa, click its card below the room list. The garden is selected first, so the whole site is visible; pick the library in the sidebar and switch to **Single room** to work inside it. Library pieces upstairs stand on the gallery deck, 1 m below the gallery's total height. The new furniture (sofa, table, lamp, easel, projection screen, framed art), structure (gallery, curved stair, stairs) and garden pieces (tree, shrub, paving) are in the furniture library. A table lower than 55 cm becomes a stone coffee table. A shrub lower than 90 cm flowers in its accent color. A tree narrower than 30% of its height grows as a cypress. Paving, galleries, wall-hung pieces and tree canopies don't block circulation.
@@ -71,7 +71,7 @@ To add the reference study, click its image card below the room list. The new bo
 
 For anything other than flush, corner-aligned sides, use **Custom join** (step 3's buttons always align the corners and never cut openings).
 
-To move a whole building, tick its checkbox in the sidebar (or use **Select all of …** in Arrange rooms), then drag any of its rooms.
+To move a whole building, tick its checkbox in the sidebar (or use **Select all of …** in Arrange rooms), then drag any of its rooms, on the canvas or in the small plan.
 
 Joining positions complete rooms with their exterior walls touching. It preserves their individual walls and openings; it does not automatically cut connecting doors. The room selected in the sidebar determines which room receives new furniture and which room the layout checks describe.
 

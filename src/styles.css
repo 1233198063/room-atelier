@@ -1898,7 +1898,14 @@ body.is-scrubbing * {
 .placard { top: 78px; }
 .room-breadcrumb { width: 100%; border: 0; border-bottom: 1px solid var(--line); padding: 12px 16px; background: var(--surface-sunk); color: var(--accent-ink); text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .room-label { max-width: 180px; overflow: hidden; text-overflow: ellipsis; padding: 4px 9px; border-radius: 6px; background: rgba(251,249,245,.9); border: 1px solid var(--line-strong); color: var(--text-2); font-size: 11px; white-space: nowrap; user-select: none; }
-.room-label.is-active { border-color: var(--accent); color: var(--accent-ink); }
+.room-label.is-active { z-index: 1; border-color: var(--accent); color: var(--accent-ink); }
+/* While editing, the label is the handle that drags its room (scene/useRoomDrag.ts). */
+.room-label.is-draggable { cursor: grab; touch-action: none; padding-left: 6px; box-shadow: 0 1px 3px rgba(60,45,25,.12); transition: border-color .12s, color .12s, background-color .12s; }
+.room-label.is-draggable::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 4px; vertical-align: -1px; background: currentColor; opacity: .6;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Ccircle cx='3' cy='2' r='1'/%3E%3Ccircle cx='7' cy='2' r='1'/%3E%3Ccircle cx='3' cy='5' r='1'/%3E%3Ccircle cx='7' cy='5' r='1'/%3E%3Ccircle cx='3' cy='8' r='1'/%3E%3Ccircle cx='7' cy='8' r='1'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'%3E%3Ccircle cx='3' cy='2' r='1'/%3E%3Ccircle cx='7' cy='2' r='1'/%3E%3Ccircle cx='3' cy='5' r='1'/%3E%3Ccircle cx='7' cy='5' r='1'/%3E%3Ccircle cx='3' cy='8' r='1'/%3E%3Ccircle cx='7' cy='8' r='1'/%3E%3C/svg%3E") center / contain no-repeat; }
+.room-label.is-draggable:hover { border-color: var(--accent); color: var(--accent-ink); background: #fff; }
+body.is-dragging-room, body.is-dragging-room * { cursor: grabbing !important; }
 .assembly-plan { width: 100%; height: 180px; display: block; background: var(--surface-sunk); border: 1px solid var(--line); border-radius: var(--radius); touch-action: none; user-select: none; }
 .assembly-plan__room { cursor: grab; }
 .assembly-plan__room:active { cursor: grabbing; }
