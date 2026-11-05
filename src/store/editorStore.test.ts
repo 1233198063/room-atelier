@@ -4,7 +4,7 @@ import { movingUnit, selectActiveRoom, selectCombined, selectLayout, selectScene
 import { parseLayout } from "../lib/persistence";
 import { localToWorld, roomBounds, roomCorners, roomsConflict } from "../lib/rooms";
 import { wallToWorld } from "../lib/openings";
-import { ADU_PROJECT } from "../lib/aduTemplate";
+import { APARTMENT_PROJECT } from "../lib/apartmentTemplate";
 import { supportingSurface } from "../lib/plantPlacement";
 import { footprintBounds } from "../lib/geometry";
 
@@ -415,12 +415,12 @@ describe("buildings and batch actions", () => {
   const addRooms = (n: number) => Array.from({ length: n }, () => get().addRoom());
 
   it("makes each added project one building, named after it", () => {
-    get().addProject(ADU_PROJECT);
-    get().addProject(ADU_PROJECT);
-    expect(get().buildings.map((b) => b.name)).toEqual([ADU_PROJECT.name, `${ADU_PROJECT.name} 2`]);
+    get().addProject(APARTMENT_PROJECT);
+    get().addProject(APARTMENT_PROJECT);
+    expect(get().buildings.map((b) => b.name)).toEqual([APARTMENT_PROJECT.name, `${APARTMENT_PROJECT.name} 2`]);
     const [first, second] = get().buildings;
-    expect(get().rooms.filter((r) => r.buildingId === first.id)).toHaveLength(3);
-    expect(get().rooms.filter((r) => r.buildingId === second.id)).toHaveLength(3);
+    expect(get().rooms.filter((r) => r.buildingId === first.id)).toHaveLength(APARTMENT_PROJECT.rooms.length);
+    expect(get().rooms.filter((r) => r.buildingId === second.id)).toHaveLength(APARTMENT_PROJECT.rooms.length);
     expect(get().rooms[0].buildingId).toBeUndefined();
     get().undo();
     expect(get().buildings).toEqual([first]);
@@ -548,36 +548,36 @@ describe("showing one building", () => {
 
   it("shows only the selected room's building, in place, after adding a project", () => {
     const loose = active().id;
-    get().addProject(ADU_PROJECT);
-    const adu = get().rooms.filter((r) => r.buildingId).map((r) => r.id);
+    get().addProject(APARTMENT_PROJECT);
+    const apartment = get().rooms.filter((r) => r.buildingId).map((r) => r.id);
     expect(get().roomDisplay).toBe("building");
-    expect(shown()).toEqual(adu);
+    expect(shown()).toEqual(apartment);
     expect(selectVisibleRooms(get()).map((r) => r.position)).toEqual(get().rooms.slice(1).map((r) => r.position));
     get().setRoomDisplay("all");
-    expect(shown()).toEqual([loose, ...adu]);
+    expect(shown()).toEqual([loose, ...apartment]);
   });
 
   it("shows a room in no building on its own", () => {
-    get().addProject(ADU_PROJECT);
+    get().addProject(APARTMENT_PROJECT);
     get().selectRoom(get().rooms[0].id);
     expect(selectCombined(get())).toBe(false);
     expect(selectVisibleRooms(get())).toEqual([{ ...get().rooms[0], position: [0, 0], rotation: 0, elevation: 0 }]);
   });
 
   it("switches to a building from the sidebar, keeping the room being edited when it is inside", () => {
-    get().addProject(ADU_PROJECT);
-    const [, kitchen, bedroom] = get().rooms;
-    get().addProject(ADU_PROJECT);
+    get().addProject(APARTMENT_PROJECT);
+    const [, living, kitchen] = get().rooms;
+    get().addProject(APARTMENT_PROJECT);
     const [first, second] = get().buildings;
     get().setRoomDisplay("single");
     get().showBuilding(first.id);
-    expect(get().activeRoomId).toBe(kitchen.id);
+    expect(get().activeRoomId).toBe(living.id);
     expect(get().roomDisplay).toBe("building");
-    get().selectRoom(bedroom.id);
+    get().selectRoom(kitchen.id);
     const token = get().cameraResetToken;
     get().showBuilding(first.id);
-    expect(get().activeRoomId).toBe(bedroom.id);
-    get().selectRoom(kitchen.id);
+    expect(get().activeRoomId).toBe(kitchen.id);
+    get().selectRoom(living.id);
     expect(get().cameraResetToken).toBe(token + 1); // showBuilding reframes; moving within it doesn't
     get().selectRoom(get().rooms.find((r) => r.buildingId === second.id)!.id);
     expect(get().cameraResetToken).toBe(token + 2);
@@ -587,8 +587,64 @@ describe("showing one building", () => {
   });
 
   it("saves the building view", () => {
-    get().addProject(ADU_PROJECT);
+    get().addProject(APARTMENT_PROJECT);
     expect(parseLayout(JSON.parse(JSON.stringify(selectLayout(get()))))!.roomDisplay).toBe("building");
+  });
+});
+
+describe("showing the ticked rooms", () => {
+  const shown = () => selectVisibleRooms(get()).map((r) => r.id);
+  const ids = () => get().rooms.map((r) => r.id);
+
+  it("shows only the ticked rooms, in place, editing one of them", () => {
+    get().addProject(APARTMENT_PROJECT);
+    const [loose, , , bedroom] = ids();
+    get().setCheckedRooms([bedroom, loose]);
+    get().setRoomDisplay("checked");
+    expect(get().activeRoomId).toBe(loose);
+    expect(selectCombined(get())).toBe(true);
+    expect(shown()).toEqual([loose, bedroom]);
+    expect(selectVisibleRooms(get()).map((r) => r.position)).toEqual([get().rooms[0], get().rooms[3]].map((r) => r.position));
+  });
+
+  it("keeps the room being edited in view, and reframes when what is shown changes", () => {
+    get().addProject(APARTMENT_PROJECT);
+    const [loose, living, kitchen, bedroom] = ids();
+    get().setCheckedRooms([living, kitchen]);
+    get().setRoomDisplay("checked");
+    expect(get().activeRoomId).toBe(living);
+    const token = get().cameraResetToken;
+    get().selectRoom(kitchen);
+    expect(get().cameraResetToken).toBe(token);
+    get().selectRoom(bedroom);
+    expect(shown()).toEqual([living, kitchen, bedroom]);
+    expect(get().cameraResetToken).toBe(token + 1);
+    get().setCheckedRooms([living, kitchen, loose]);
+    expect(shown()).toEqual([loose, living, kitchen, bedroom]);
+    expect(get().cameraResetToken).toBe(token + 2);
+  });
+
+  it("shows the room being edited alone until another room is ticked", () => {
+    get().setRoomDisplay("checked");
+    expect(selectCombined(get())).toBe(false);
+    get().setCheckedRooms([active().id]);
+    expect(selectCombined(get())).toBe(false);
+    expect(selectVisibleRooms(get())).toEqual([{ ...active(), position: [0, 0], rotation: 0, elevation: 0 }]);
+  });
+
+  it("leaves the other views alone when rooms are ticked", () => {
+    get().addProject(APARTMENT_PROJECT);
+    const before = shown(), token = get().cameraResetToken;
+    get().setCheckedRooms(ids().slice(0, 2));
+    expect(shown()).toEqual(before);
+    expect(get().cameraResetToken).toBe(token);
+  });
+
+  it("saves as the single-room view, since ticks are not saved", () => {
+    get().addProject(APARTMENT_PROJECT);
+    get().setCheckedRooms(ids().slice(0, 2));
+    get().setRoomDisplay("checked");
+    expect(parseLayout(JSON.parse(JSON.stringify(selectLayout(get()))))!.roomDisplay).toBe("single");
   });
 });
 

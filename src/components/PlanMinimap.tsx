@@ -28,7 +28,7 @@ const pts = (c: [number, number][]) => c.map(([x, z]) => `${toCm(x)},${toCm(z)}`
 /** Drawn wall thickness in the minimap, in cm — exaggerated a little so openings read at this size. */
 const BAND = 8;
 
-/** An opening as a rectangle across the wall band, plus a door's swing arc on the floor. */
+/** An opening as a rectangle across the wall band, plus a door's swing arc on the floor (unless it swings into the next room). */
 function OpeningMark({ o, room, selected, onSelect }: { o: Opening; room: Room; selected: boolean; onSelect: () => void }) {
   const [a0, a1] = openingSpan(o);
   const along = runsAlongX(o.wall);
@@ -41,7 +41,7 @@ function OpeningMark({ o, room, selected, onSelect }: { o: Opening; room: Room; 
     : { x: o.wall === "left" ? out : toCm(room.width), y: Math.min(z0, z1), width: BAND, height: Math.abs(z1 - z0) };
 
   let swing: string | null = null;
-  if (o.type === "door") {
+  if (o.type === "door" && !o.opensAway) {
     const hingeA = o.hinge === "start" ? a0 : a1;
     const dir = o.hinge === "start" ? 1 : -1;
     const w = a1 - a0;

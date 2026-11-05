@@ -1,4 +1,4 @@
-import { Building2, ChevronDown, ChevronRight, DoorOpen, Group, Layers, Pencil, Plus, Square, Trash2, Ungroup, X } from "lucide-react";
+import { Building2, ChevronDown, ChevronRight, DoorOpen, Eye, Group, Layers, Pencil, Plus, Square, SquareCheck, Trash2, Ungroup, X } from "lucide-react";
 import { useRef, useState, type MouseEvent, type ReactNode } from "react";
 import { useLength, useName, useT } from "../i18n";
 import { selectActiveRoom, useEditor } from "../store/editorStore";
@@ -6,13 +6,14 @@ import type { Building, ProjectRoom } from "../types";
 import { Segmented } from "./ui/Segmented";
 import { SUNLIT_STUDY } from "../lib/roomTemplates";
 import { VILLA_PROJECT } from "../lib/villaTemplate";
-import { ADU_PROJECT } from "../lib/aduTemplate";
+import { APARTMENT_PROJECT } from "../lib/apartmentTemplate";
 import { FloorPlanButton } from "./FloorPlanImport";
 
 /** Actions on the ticked rooms. */
 function BatchBar({ ids }: { ids: string[] }) {
   const rooms = useEditor((s) => s.rooms);
   const buildings = useEditor((s) => s.buildings);
+  const viewing = useEditor((s) => s.roomDisplay === "checked");
   const s = useEditor.getState();
   const t = useT();
   const name = useName();
@@ -33,6 +34,8 @@ function BatchBar({ ids }: { ids: string[] }) {
         onClick={() => s.setCheckedRooms([])}><X size={14} /></button>
     </div>
     <div className="batch-bar__actions">
+      <button type="button" className="btn" aria-pressed={viewing} title={t.rooms.viewTogetherHint}
+        onClick={() => s.setRoomDisplay("checked")}><Eye size={14} /> {t.rooms.viewTogether}</button>
       <button type="button" className="btn" disabled={same} title={group.hint} onClick={() => s.groupRooms(ids)}>
         <Group size={14} /> {group.label}</button>
       <button type="button" className="btn" disabled={!theirs.length} title={t.rooms.ungroupHint} onClick={() => s.ungroupRooms(ids)}>
@@ -49,6 +52,7 @@ export function RoomDisplayControl() {
   const t = useT().rooms;
   return <Segmented label={t.shown} value={display} onChange={setDisplay} options={[
     { value: "single", label: t.single, icon: Square, hint: t.singleHint },
+    { value: "checked", label: t.selection, icon: SquareCheck, hint: t.selectionHint },
     { value: "building", label: t.building, icon: Building2, hint: t.buildingHint },
     { value: "all", label: t.together, icon: Layers, hint: t.togetherHint },
   ]} />;
@@ -197,11 +201,11 @@ export function RoomManager() {
     </button>
     <button type="button" className="room-template" onClick={() => {
       const s = useEditor.getState();
-      s.addProject(ADU_PROJECT);
+      s.addProject(APARTMENT_PROJECT);
       s.setWallView("cutaway");
-    }} title={t.aduHint}>
-      <img src="/references/adu.svg" alt={t.aduAlt} />
-      <span><strong>{name(ADU_PROJECT.name)}</strong><small>{t.aduMeta}</small></span>
+    }} title={t.apartmentHint}>
+      <img src="/references/apartment.svg" alt={t.apartmentAlt} />
+      <span><strong>{name(APARTMENT_PROJECT.name)}</strong><small>{t.apartmentMeta}</small></span>
       <Plus size={16} />
     </button>
   </section>;

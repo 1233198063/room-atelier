@@ -201,6 +201,7 @@ export function checkLayout(room: Room, furniture: Furniture[], openings: Openin
   // ── Doors and windows ─────────────────────────────────────────────────
   for (const o of openings) {
     if (o.type === "door") {
+      if (o.opensAway) continue; // it sweeps the floor on the other side
       const swing = doorSwing(o, room);
       for (const f of furniture) {
         if (bottom(f) >= o.height || !polygonsOverlap(swing, poly(f))) continue;

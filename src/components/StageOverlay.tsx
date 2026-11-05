@@ -49,6 +49,7 @@ export function StageOverlay() {
   const building = useEditor((s) => s.roomDisplay === "building" && selectCombined(s)
     ? s.buildings.find((b) => b.id === selectActiveRoom(s).buildingId) ?? null : null);
   const shown = useEditor(useShallow(selectShownRooms));
+  const display = useEditor((s) => s.roomDisplay);
   const selectRoom = useEditor((s) => s.selectRoom);
   const mode = useEditor((s) => s.mode);
   const view = useEditor((s) => s.view);
@@ -107,7 +108,8 @@ export function StageOverlay() {
             </button>
           )}
           <button type="button" className="chip" onClick={resetCamera} title={t.frameHint}>
-            <Focus size={14} strokeWidth={1.8} /> {building ? t.frameBuilding : combined ? t.frameAll : t.frameRoom}
+            <Focus size={14} strokeWidth={1.8} /> {building ? t.frameBuilding : !combined ? t.frameRoom
+              : display === "checked" ? t.frameSelected : t.frameAll}
           </button>
           {mode === "preview" && (
             <button type="button" className="chip chip--dark" onClick={() => setMode("edit")} title={t.backToEditHint}>

@@ -50,7 +50,7 @@ function parseFurniture(raw: unknown): Furniture | null {
 
 function parseOpening(raw: unknown): Opening | null {
   if (!isObject(raw)) return null;
-  const { id, type, name, wall, offset, width, height, elevation, hinge } = raw;
+  const { id, type, name, wall, offset, width, height, elevation, hinge, opensAway } = raw;
   if (typeof id !== "string" || !id || typeof type !== "string" || !Object.hasOwn(OPENING_CATALOG, type)) return null;
   if (typeof wall !== "string" || !WALLS.includes(wall as Wall)) return null;
   if (!isNum(offset) || !isNum(width) || !isNum(height) || !isNum(elevation)) return null;
@@ -66,6 +66,7 @@ function parseOpening(raw: unknown): Opening | null {
     height: clamp(height, entry.min.height, entry.max.height),
     elevation: entry.type === "door" ? 0 : Math.max(0, elevation),
     hinge: hinge === "end" ? "end" : "start",
+    ...(entry.type === "door" && opensAway === true ? { opensAway: true } : {}),
   };
 }
 

@@ -76,6 +76,13 @@ describe("constrainOpening", () => {
   it("never makes an opening wider than its wall", () => {
     expect(constrainOpening(opening({ width: 4, wall: "left" }), room).width).toBe(3);
   });
+
+  it("keeps a door's swing into the next room, stored only when set and only on doors", () => {
+    const door = opening({ type: "door", elevation: 0, height: 2.1 });
+    expect(constrainOpening({ ...door, opensAway: true }, room).opensAway).toBe(true);
+    expect(constrainOpening({ ...door, opensAway: false }, room)).not.toHaveProperty("opensAway");
+    expect(constrainOpening(opening({ opensAway: true }), room)).not.toHaveProperty("opensAway");
+  });
 });
 
 describe("findOpeningSpot", () => {

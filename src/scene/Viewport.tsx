@@ -65,10 +65,11 @@ export function Viewport() {
   const rooms = useEditor((s) => s.rooms);
   const activeRoomId = useEditor((s) => s.activeRoomId);
   const roomDisplay = useEditor((s) => s.roomDisplay);
+  const checkedRoomIds = useEditor((s) => s.checkedRoomIds);
   const mode = useEditor((s) => s.mode);
   const select = useEditor((s) => s.select);
-  const shown = useMemo(() => new Set(selectVisibleRooms({ rooms, activeRoomId, roomDisplay, mode }).map((r) => r.id)),
-    [rooms, activeRoomId, roomDisplay, mode]);
+  const shown = useMemo(() => new Set(selectVisibleRooms({ rooms, activeRoomId, roomDisplay, checkedRoomIds, mode }).map((r) => r.id)),
+    [rooms, activeRoomId, roomDisplay, checkedRoomIds, mode]);
   // Holes depend on where the courtyards are, not on how the garden is displayed.
   const holes = useMemo(() => new Map(rooms.map((r) => {
     const h = gardenHoles(r, rooms);

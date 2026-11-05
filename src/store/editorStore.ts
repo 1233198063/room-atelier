@@ -286,8 +286,8 @@ function pruneBuildings(rooms: ProjectRoom[], buildings: Building[]): Building[]
   return kept.length === buildings.length ? buildings : kept;
 }
 
-/** What the building view shows with this room: its building, or the room alone. */
-const viewGroup = (r: ProjectRoom) => r.buildingId ?? r.id;
+/** Identity of what the view shows; when it changes, the camera reframes. */
+const shownKey = (s: Parameters<typeof selectShownRooms>[0]) => selectShownRooms(s).map((r) => r.id).join();
 
 /** Ticked ids that still name a room, in list order. */
 function pruneChecked(rooms: ProjectRoom[], ids: string[]): string[] {
@@ -409,9 +409,8 @@ export const useEditor = create<EditorState>()((setState, get) => {
       const next = get().rooms.find((r) => r.id === id);
       if (!next) return;
       const changed = get().activeRoomId !== id;
-      // Reframe when the view now shows something else: another room alone, or another building.
-      const reframe = changed && (get().roomDisplay === "single"
-        || (get().roomDisplay === "building" && viewGroup(active()) !== viewGroup(next)));
+      // Reframe when the view now shows something else: another room alone, another building, or one more room.
+      const reframe = changed && shownKey(get()) !== shownKey({ ...get(), activeRoomId: id });
       if (gestureStart) get().endGesture();
       lastCoalesce = null;
       set({ activeRoomId: id, selectedId: null, cameraResetToken: get().cameraResetToken + (reframe ? 1 : 0) });
@@ -453,7 +452,11 @@ export const useEditor = create<EditorState>()((setState, get) => {
         cameraResetToken: get().cameraResetToken + 1 });
     },
 
-    setCheckedRooms: (ids) => set({ checkedRoomIds: pruneChecked(get().rooms, [...new Set(ids)]) }),
+    setCheckedRooms: (ids) => {
+      const checkedRoomIds = pruneChecked(get().rooms, [...new Set(ids)]);
+      const reframe = shownKey(get()) !== shownKey({ ...get(), checkedRoomIds });
+      set({ checkedRoomIds, cameraResetToken: get().cameraResetToken + (reframe ? 1 : 0) });
+    },
 
     groupRooms: (ids) => {
       const members = get().rooms.filter((r) => ids.includes(r.id));
@@ -508,7 +511,13 @@ export const useEditor = create<EditorState>()((setState, get) => {
 
     setRoomDisplay: (roomDisplay) => {
       if (gestureStart) get().endGesture();
-      set({ roomDisplay, cameraResetToken: get().cameraResetToken + 1 });
+      // Looking at the ticked rooms: edit one of them rather than show another room beside them.
+      const { rooms, checkedRoomIds, activeRoomId } = get();
+      const ticked = roomDisplay === "checked" && !checkedRoomIds.includes(activeRoomId)
+        ? rooms.find((r) => checkedRoomIds.includes(r.id)) : undefined;
+      if (ticked) lastCoalesce = null;
+      set({ roomDisplay, ...(ticked ? { activeRoomId: ticked.id, selectedId: null } : {}),
+        cameraResetToken: get().cameraResetToken + 1 });
     },
 
     showBuilding: (id) => {
@@ -858,7 +867,8 @@ export const useEditor = create<EditorState>()((setState, get) => {
 /** Plain-data view of the document, as persisted. */
 export function selectLayout(s: EditorState): Layout {
   return { version: 2, projectName: s.projectName, rooms: s.rooms, activeRoomId: s.activeRoomId,
-    roomDisplay: s.roomDisplay, ...(s.wallView === "exterior" ? { wallView: s.wallView } : {}),
+    // Ticks aren't saved, so showing the ticked rooms comes back as the room being edited.
+    roomDisplay: s.roomDisplay === "checked" ? "single" : s.roomDisplay, ...(s.wallView === "exterior" ? { wallView: s.wallView } : {}),
     ...(s.buildings.length ? { buildings: s.buildings } : {}) };
 }
 
@@ -867,7 +877,7 @@ export function selectLayout(s: EditorState): Layout {
  * the origin; the combined view places rooms at their level, minus any that
  * would hide the room being edited.
  */
-export function selectVisibleRooms(s: Pick<EditorState, "rooms" | "activeRoomId" | "roomDisplay" | "mode">): ProjectRoom[] {
+export function selectVisibleRooms(s: Pick<EditorState, "rooms" | "activeRoomId" | "roomDisplay" | "checkedRoomIds" | "mode">): ProjectRoom[] {
   const active = selectActiveRoom(s);
   if (!selectCombined(s)) return [{ ...active, position: [0, 0], rotation: 0, elevation: 0 }];
   const pool = selectShownRooms(s);
@@ -876,16 +886,22 @@ export function selectVisibleRooms(s: Pick<EditorState, "rooms" | "activeRoomId"
 }
 
 /**
- * Rooms are drawn in place, as a group: every room, or the selected room's
- * building. A room in no building shows alone, as in the single-room view.
+ * Rooms are drawn in place, as a group: every room, the ticked rooms, or the
+ * selected room's building. A room in no building shows alone, as in the
+ * single-room view, and so does the room being edited when no other is ticked.
  */
-export const selectCombined = (s: Pick<EditorState, "rooms" | "activeRoomId" | "roomDisplay">) =>
-  s.roomDisplay === "all" || (s.roomDisplay === "building" && selectActiveRoom(s).buildingId !== undefined);
+export const selectCombined = (s: Pick<EditorState, "rooms" | "activeRoomId" | "roomDisplay" | "checkedRoomIds">) =>
+  s.roomDisplay === "all" || (s.roomDisplay === "building" && selectActiveRoom(s).buildingId !== undefined)
+  || (s.roomDisplay === "checked" && s.checkedRoomIds.some((id) => id !== selectActiveRoom(s).id));
 
-/** The rooms the current view is about (before any step aside while editing): all, one building, or one room. */
-export function selectShownRooms(s: Pick<EditorState, "rooms" | "activeRoomId" | "roomDisplay">): ProjectRoom[] {
+/**
+ * The rooms the current view is about (before any step aside while editing):
+ * all, the ticked rooms and the one being edited, one building, or one room.
+ */
+export function selectShownRooms(s: Pick<EditorState, "rooms" | "activeRoomId" | "roomDisplay" | "checkedRoomIds">): ProjectRoom[] {
   if (s.roomDisplay === "all") return s.rooms;
   const active = selectActiveRoom(s);
+  if (s.roomDisplay === "checked") return s.rooms.filter((r) => r === active || s.checkedRoomIds.includes(r.id));
   return s.roomDisplay === "building" && active.buildingId ? s.rooms.filter((r) => r.buildingId === active.buildingId) : [active];
 }
 

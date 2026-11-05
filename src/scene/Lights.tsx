@@ -23,9 +23,10 @@ export function Lights() {
   const rooms = useEditor((s) => s.rooms);
   const activeId = useEditor((s) => s.activeRoomId);
   const display = useEditor((s) => s.roomDisplay);
+  const checked = useEditor((s) => s.checkedRoomIds);
   const mode = useEditor((s) => s.mode);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const room = useMemo(() => selectSceneBounds(useEditor.getState()), [rooms, activeId, display, mode]);
+  const room = useMemo(() => selectSceneBounds(useEditor.getState()), [rooms, activeId, display, checked, mode]);
   const plan = useEditor((s) => s.view === "top");
   const sun = useRef<DirectionalLight>(null);
   const p = PRESETS[mode];
