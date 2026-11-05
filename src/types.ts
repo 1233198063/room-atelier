@@ -83,6 +83,12 @@ export interface Opening {
   elevation: number;
   /** Doors only: which jamb the hinges are on — the low-coordinate end of the wall or the high one. */
   hinge: "start" | "end";
+  /**
+   * Doors only: swings into the room on the other side of the wall (a closet
+   * door seen from the bedroom), so it sweeps none of this room's floor.
+   * Absent for the usual door that opens into its room.
+   */
+  opensAway?: boolean;
 }
 
 /**
@@ -176,8 +182,8 @@ export interface ProjectTemplate {
   rooms: (RoomTemplate & Pick<ProjectRoom, "position" | "rotation">)[];
 }
 
-/** Show the selected room alone, its building (rooms in place), or every room. */
-export type RoomDisplay = "single" | "building" | "all";
+/** Show the selected room alone, the ticked rooms, its building (rooms in place), or every room. */
+export type RoomDisplay = "single" | "checked" | "building" | "all";
 /** Together view: cut walls away like a dollhouse, or show other rooms closed with their roofs. */
 export type WallView = "cutaway" | "exterior";
 
@@ -186,7 +192,8 @@ export interface Layout {
   projectName: string;
   rooms: ProjectRoom[];
   activeRoomId: string;
-  roomDisplay: RoomDisplay;
+  /** Ticked rooms aren't saved, so neither is showing them. */
+  roomDisplay: Exclude<RoomDisplay, "checked">;
   /** Added with multi-level projects; older saves use the cutaway view. */
   wallView?: WallView;
   /** Added with building groups; older saves have none. Every building has at least one room. */

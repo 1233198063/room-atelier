@@ -119,7 +119,7 @@ export const OpeningItem = memo(function OpeningItem({ opening: o, room, cut, se
           <Edges color={selected ? ACCENT : flagged ? WARN : ACCENT_SOFT} lineWidth={selected || flagged ? 1.6 : 1} />
         </mesh>
       )}
-      {editing && o.type === "door" && (
+      {editing && o.type === "door" && !o.opensAway && (
         <DoorSwing o={o} room={room} color={selected ? ACCENT : flagged ? WARN : INK_MUTED} />
       )}
       {plan && o.type === "window" && <WindowSymbol o={o} room={room} color={selected ? ACCENT : "#5d86b3"} />}

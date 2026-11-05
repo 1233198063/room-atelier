@@ -100,6 +100,12 @@ describe("checkLayout", () => {
     expect(issue.targets).toEqual([dresser.id, "d"]);
   });
 
+  it("leaves the floor alone where a door swings into the room behind the wall", () => {
+    const door = opening({ id: "d", type: "door", wall: "front", offset: 1, width: 0.9, height: 2.1, elevation: 0, opensAway: true });
+    const dresser = piece("dresser", [1.2, 0, 2.6], { width: 1.2, depth: 0.48, height: 0.8 });
+    expect(keys(checkLayout(room, [dresser], [door, window_]), "door-swing")).toHaveLength(0);
+  });
+
   it("flags tall furniture in front of a window, but not low pieces or plants", () => {
     const wardrobe = piece("cabinet", [2, 0, 0.25], { width: 1, depth: 0.5, height: 1.9 });
     const desk = piece("desk", [2, 0, 0.3], { width: 1.2, depth: 0.6, height: 0.75 });

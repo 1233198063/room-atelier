@@ -91,6 +91,14 @@ describe("parseLayout", () => {
     expect(parseLayout(JSON.parse(JSON.stringify(legacy)))?.rooms[0].openings).toEqual([]);
   });
 
+  it("keeps a door that swings into the next room, and nothing else of the kind", () => {
+    const [first, second] = SAMPLE_LAYOUT.openings;
+    const parsed = parseLayout(JSON.parse(JSON.stringify({ ...SAMPLE_LAYOUT, openings: [
+      { ...first, type: "door", opensAway: true }, { ...second, type: "window", opensAway: true }, { ...first, id: "x", type: "door", opensAway: "yes" },
+    ] })))!;
+    expect(parsed.rooms[0].openings.map((o) => o.opensAway)).toEqual([true, undefined, undefined]);
+  });
+
   it("drops malformed openings", () => {
     const parsed = parseLayout({
       ...SAMPLE_LAYOUT,

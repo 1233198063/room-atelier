@@ -376,6 +376,16 @@ function OpeningInspector({ o }: { o: Opening }) {
             </button>
           )}
         </div>
+        {o.type === "door" && <div className="chip-row" title={t.swingHint}>
+          <span>{t.swing}</span>
+          <div className="chip-row__chips" role="radiogroup" aria-label={t.swing}>
+            {[false, true].map((away) => <button key={String(away)} type="button" role="radio"
+              className={`filter-chip${(o.opensAway ?? false) === away ? " is-active" : ""}`} aria-checked={(o.opensAway ?? false) === away}
+              onClick={() => update(o.id, { opensAway: away })}>
+              {away ? t.swingAway : t.swingHere}
+            </button>)}
+          </div>
+        </div>}
       </section>
 
       <section className="section">

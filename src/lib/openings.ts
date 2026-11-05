@@ -69,7 +69,8 @@ export function constrainOpening(o: Opening, room: Room): Opening {
   const height = roundMm(clamp(o.height, min.height, Math.min(max.height, room.height)));
   const elevation = o.type === "door" ? 0 : roundMm(clamp(o.elevation, 0, room.height - height));
   const offset = roundMm(clamp(o.offset, width / 2, length - width / 2));
-  return { ...o, width, height, elevation, offset };
+  const { opensAway, ...rest } = o;
+  return { ...rest, width, height, elevation, offset, ...(o.type === "door" && opensAway ? { opensAway: true } : {}) };
 }
 
 export interface WallSegment {
