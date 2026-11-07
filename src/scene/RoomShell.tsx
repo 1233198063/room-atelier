@@ -1,7 +1,7 @@
 import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import { ExtrudeGeometry, MathUtils, Path, Shape, Vector2 } from "three";
-import { PLAN_CUT_HEIGHT, WALL_T, WALLS, wallSegments } from "../lib/openings";
+import { PLAN_CUT_HEIGHT, WALL_T, wallLength, WALLS, wallSegments } from "../lib/openings";
 import { useEditor } from "../store/editorStore";
 import type { Room, Wall } from "../types";
 import { ClippedBox, type CutHeights } from "./ClippedBox";
@@ -14,6 +14,8 @@ import { useFlaggedIds } from "./useFlaggedIds";
 
 const FLOOR_T = 0.04;
 const STUB_H = 0.06; // height a wall drops to when it's cut away
+const SKIRTING_H = 0.08;
+const SKIRTING_T = 0.012;
 
 /** True when the camera is on the outside of this wall. */
 function cameraOutside(wall: Wall, x: number, z: number, room: Room) {
@@ -92,6 +94,13 @@ export function RoomShell({ closed = false, holes = [] }: { closed?: boolean; ho
     [room, openings, openWalls],
   );
 
+  // Skirting runs along the foot of every wall piece that stands on the floor, so it
+  // stops at doors and floor-length windows; side walls reach past the corners, it doesn't.
+  const skirting = useMemo(() => kind !== "indoor" ? [] : segments
+    .filter(({ seg }) => seg.y0 === 0)
+    .map(({ wall, seg }) => ({ wall, seg: { ...seg, a0: Math.max(seg.a0, 0), a1: Math.min(seg.a1, wallLength(wall, room)) } }))
+    .filter(({ seg }) => seg.a1 - seg.a0 > 0.01), [kind, segments, room]);
+
   const paved = kind === "courtyard";
   const floorTexture = useMemo(() => (paved ? createPavingTexture() : createFloorTexture()), [paved]);
   useEffect(() => () => floorTexture.dispose(), [floorTexture]);
@@ -125,7 +134,8 @@ export function RoomShell({ closed = false, holes = [] }: { closed?: boolean; ho
     <group>
       <mesh position={[room.width / 2, -FLOOR_T / 2, room.depth / 2]} receiveShadow onPointerDown={onFloorDown}>
         <boxGeometry args={[room.width, FLOOR_T, room.depth]} />
-        <meshStandardMaterial map={floorTexture} color={floorColor} roughness={paved ? 0.9 : 0.78} />
+        {/* Satin-varnished boards: rough enough to stay soft, smooth enough to pick up the window. */}
+        <meshStandardMaterial map={floorTexture} color={floorColor} roughness={paved ? 0.9 : 0.6} />
       </mesh>
 
       {segments.map(({ wall, seg }, i) => (
@@ -140,6 +150,11 @@ export function RoomShell({ closed = false, holes = [] }: { closed?: boolean; ho
           cut={cut}
           receiveShadow
         />
+      ))}
+
+      {skirting.map(({ wall, seg }, i) => (
+        <ClippedBox key={`skirting-${wall}-${i}`} wall={wall} box={{ ...seg, y1: SKIRTING_H, t0: 0, t1: SKIRTING_T }}
+          room={room} material={materials.trim} cut={cut} receiveShadow />
       ))}
 
       {openings.filter((o) => !openWalls?.includes(o.wall)).map((o) => (

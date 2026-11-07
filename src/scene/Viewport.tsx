@@ -1,6 +1,6 @@
 import { Grid, Line } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import { NeutralToneMapping } from "three";
 import { useName, useT } from "../i18n";
 import { degToRad } from "../lib/geometry";
@@ -61,6 +61,10 @@ function RoomScene({ data, holes }: { data: ProjectRoom; holes: Point2[][] }) {
 
 const NO_HOLES: Point2[][] = [];
 
+// The post-processing library is a sizable download of its own; the room shows
+// without it and gains its ambient occlusion a moment later.
+const Effects = lazy(() => import("./Effects").then((m) => ({ default: m.Effects })));
+
 export function Viewport() {
   const rooms = useEditor((s) => s.rooms);
   const activeRoomId = useEditor((s) => s.activeRoomId);
@@ -80,6 +84,7 @@ export function Viewport() {
     onPointerMissed={(e) => { if (e.button === 0) select(null); }}>
     <Lights />
     <CameraRig />
+    <Suspense fallback={null}><Effects /></Suspense>
     {rooms.filter((r) => shown.has(r.id)).map((r) => <RoomScene key={r.id} data={r} holes={holes.get(r.id) ?? NO_HOLES} />)}
   </Canvas>;
 }

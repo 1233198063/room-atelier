@@ -1,6 +1,11 @@
-import { DoubleSide, MeshBasicMaterial, MeshStandardMaterial } from "three";
+import { DoubleSide, MeshBasicMaterial, MeshPhysicalMaterial, MeshStandardMaterial } from "three";
 import type { FurnitureColors, Palette } from "../types";
 import { CERAMIC_COLOR, PLANT_COLORS, STONE_COLOR } from "../lib/furnitureColors";
+import { createWoodTexture } from "./floorTexture";
+
+/** Woven cloth scatters light back at grazing angles: a soft sheen along the edges of cushions and duvets. */
+const fabric = (color: string, roughness: number) =>
+  new MeshPhysicalMaterial({ color, roughness, sheen: 0.5, sheenRoughness: 0.8, sheenColor: "#fff8ee" });
 
 /**
  * Material templates. RoomProvider clones one set per room, so furniture
@@ -9,10 +14,10 @@ import { CERAMIC_COLOR, PLANT_COLORS, STONE_COLOR } from "../lib/furnitureColors
 export const MATERIALS = {
   oak: new MeshStandardMaterial({ color: "#d9b88f", roughness: 0.62 }),
   oakDark: new MeshStandardMaterial({ color: "#a98257", roughness: 0.7 }),
-  linen: new MeshStandardMaterial({ color: "#f3eee5", roughness: 0.95 }),
-  duvet: new MeshStandardMaterial({ color: "#ebe3d6", roughness: 1 }),
-  throw: new MeshStandardMaterial({ color: "#b88b72", roughness: 1 }),
-  cushion: new MeshStandardMaterial({ color: "#d9cbb6", roughness: 0.95 }),
+  linen: fabric("#f3eee5", 0.95),
+  duvet: fabric("#ebe3d6", 1),
+  throw: fabric("#b88b72", 1),
+  cushion: fabric("#d9cbb6", 0.95),
   brass: new MeshStandardMaterial({ color: "#b8955c", roughness: 0.35, metalness: 0.75 }),
   wall: new MeshStandardMaterial({ color: "#f4efe7", roughness: 0.95 }),
   /** In plan view walls are drawn solid and dark, like the poché of an architectural drawing. */
@@ -25,10 +30,10 @@ export const MATERIALS = {
   stone: new MeshStandardMaterial({ color: STONE_COLOR, roughness: 0.85 }),
   /** Same stone with a slab pattern; the Paving model attaches the texture on first use. */
   paving: new MeshStandardMaterial({ color: STONE_COLOR, roughness: 0.9 }),
-  /** Glazed porcelain and white enamel: toilets, basins, tubs, appliance bodies. */
-  ceramic: new MeshStandardMaterial({ color: CERAMIC_COLOR, roughness: 0.28 }),
+  /** Glazed porcelain and white enamel: toilets, basins, tubs, appliance bodies. The clear coat is the glaze. */
+  ceramic: new MeshPhysicalMaterial({ color: CERAMIC_COLOR, roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.08 }),
   /** The inside of a basin or tub: the same glaze a little in shadow. */
-  ceramicShade: new MeshStandardMaterial({ color: "#d6d3cc", roughness: 0.3 }),
+  ceramicShade: new MeshPhysicalMaterial({ color: "#d6d3cc", roughness: 0.4, clearcoat: 1, clearcoatRoughness: 0.1 }),
   /** Brushed stainless steel: sinks, taps, shower posts. Fixed, like real fittings. */
   steel: new MeshStandardMaterial({ color: "#c9ccce", roughness: 0.3, metalness: 0.85 }),
   /** A switched-off screen and a ceramic hob: dark glass with a soft reflection. */
@@ -51,7 +56,24 @@ export const MATERIALS = {
   }),
 };
 
+let surfaceDetail = false;
+
+/**
+ * Wood grain is painted on a canvas, so it's added to the templates on first
+ * use in the browser (the tests run without a DOM). Clones share the texture.
+ */
+function addSurfaceDetail() {
+  if (surfaceDetail || typeof document === "undefined") return;
+  surfaceDetail = true;
+  const grain = createWoodTexture();
+  for (const material of [MATERIALS.oak, MATERIALS.oakDark]) {
+    material.map = grain;
+    material.needsUpdate = true;
+  }
+}
+
 export function cloneMaterials(): typeof MATERIALS {
+  addSurfaceDetail();
   return Object.fromEntries(Object.entries(MATERIALS).map(([key, material]) => [key, material.clone()])) as typeof MATERIALS;
 }
 

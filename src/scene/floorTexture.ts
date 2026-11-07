@@ -72,6 +72,45 @@ export function createFloorTexture(): CanvasTexture {
   return texture;
 }
 
+/**
+ * Wood grain for furniture: one meter square, grain running along u. Like the
+ * floor it's near-white, so the palette's wood colors tint it. Broad soft
+ * streaks survive at room scale; fine lines and pores show up close.
+ */
+export function createWoodTexture(): CanvasTexture {
+  const size = 1024;
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext("2d")!;
+  const rand = mulberry32(31);
+  ctx.fillStyle = "hsl(32, 12%, 98%)";
+  ctx.fillRect(0, 0, size, size);
+
+  // A grain line: a gentle wave with whole periods across the tile, drawn
+  // three times a tile apart vertically so it wraps without a seam.
+  const streak = (y: number, width: number, color: string) => {
+    const periods = 1 + Math.floor(rand() * 3), amp = 2 + rand() * 10, phase = rand() * Math.PI * 2;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    for (const dy of [-size, 0, size]) {
+      ctx.beginPath();
+      for (let x = 0; x <= size; x += 16) {
+        const yy = y + dy + amp * Math.sin((x / size) * periods * Math.PI * 2 + phase);
+        if (x === 0) ctx.moveTo(x, yy);
+        else ctx.lineTo(x, yy);
+      }
+      ctx.stroke();
+    }
+  };
+  for (let i = 0; i < 26; i++) streak(rand() * size, 14 + rand() * 30, `rgba(150, 105, 60, ${0.02 + rand() * 0.03})`);
+  for (let i = 0; i < 140; i++) streak(rand() * size, 1 + rand() * 3, `rgba(110, 70, 35, ${0.03 + rand() * 0.06})`);
+  for (let i = 0; i < 1600; i++) { // pores: short dashes along the grain
+    ctx.fillStyle = `rgba(90, 55, 25, ${0.04 + rand() * 0.06})`;
+    ctx.fillRect(rand() * size, rand() * size, 4 + rand() * 10, 1.2);
+  }
+  return wrapTexture(canvas);
+}
+
 function wrapTexture(canvas: HTMLCanvasElement): CanvasTexture {
   const texture = new CanvasTexture(canvas);
   texture.wrapS = texture.wrapT = RepeatWrapping;

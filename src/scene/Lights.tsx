@@ -1,19 +1,39 @@
+import { Environment, Lightformer } from "@react-three/drei";
 import { useLayoutEffect, useMemo, useRef } from "react";
 import type { DirectionalLight } from "three";
 import { selectSceneBounds, useEditor } from "../store/editorStore";
 
 // Since three r155 light intensities are physically based, so "1" is dimmer than
 // it used to be — these values are tuned by eye for a bright, airy interior.
+// `env` scales the image-based light; the hemisphere light only tops it up.
 const PRESETS = {
   // Neutral, even light for reading shapes and dimensions.
-  edit: { sky: "#fffaf2", ground: "#d8c6ac", hemi: 2.4, sun: "#fff4e4", sunIntensity: 2.2 },
+  edit: { sky: "#fffaf2", ground: "#d8c6ac", hemi: 1.3, env: 0.35, sun: "#fff4e4", sunIntensity: 2.2 },
   // Lower, warmer "late afternoon" light for enjoying the room.
-  preview: { sky: "#fff3e3", ground: "#d2b48f", hemi: 2.1, sun: "#ffe0b8", sunIntensity: 2.7 },
+  preview: { sky: "#fff3e3", ground: "#d2b48f", hemi: 1.0, env: 0.3, sun: "#ffd6a6", sunIntensity: 2.9 },
 } as const;
 
 /**
- * Two lights are enough for a clean, warm look:
- *  - a hemisphere light: soft fill whose color blends from "sky" (above) to "ground" (below)
+ * Light from all around, like a room's own surroundings: a bright ceiling, a
+ * warm window on the sun's side, a cooler one opposite and the floor's bounce.
+ * It's drawn once into a cube map (no image to download), lights every
+ * surface softly from the directions it faces and gives glaze, metal and
+ * varnish something to reflect.
+ */
+function RoomEnvironment({ intensity }: { intensity: number }) {
+  return <Environment resolution={256} frames={1} environmentIntensity={intensity}>
+    <color attach="background" args={["#8a7c6c"]} />
+    <Lightformer form="rect" color="#fff6ea" intensity={1.6} scale={[12, 12, 1]} position={[0, 6, 0]} />
+    <Lightformer form="rect" color="#ffe7c8" intensity={4} scale={[5, 3, 1]} position={[6, 2.5, 3.5]} />
+    <Lightformer form="rect" color="#e6edf5" intensity={1.2} scale={[4, 3, 1]} position={[-6, 2, -3]} />
+    <Lightformer form="rect" color="#c8a47a" intensity={0.8} scale={[12, 12, 1]} position={[0, -6, 0]} />
+  </Environment>;
+}
+
+/**
+ * Three lights give a soft but grounded look:
+ *  - the environment above: soft light and reflections from every direction
+ *  - a hemisphere light: extra fill whose color blends from "sky" (above) to "ground" (below)
  *  - a directional light: parallel rays like sunlight through a window, casting shadows
  *
  * The sun comes in from the front-right — over the walls that the default
@@ -53,6 +73,7 @@ export function Lights() {
 
   return (
     <>
+      <RoomEnvironment intensity={p.env} />
       <hemisphereLight args={[p.sky, p.ground, p.hemi]} />
       <directionalLight
         ref={sun}

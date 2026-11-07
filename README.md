@@ -36,6 +36,7 @@ A browser-based 3D room planner. In **Edit** mode it behaves like a small CAD to
 - **Color schemes.** Five curated palettes (Warm Oak, Nordic, Japandi, Mid-century, Plaster & Clay), switched in one click. Seven color roles (walls, floor, wood, dark wood, textiles, accent, hardware) can each be fine-tuned. Rule-based suggestions mark the palettes that suit the room, based on its floor area and how much window glass it has, and say why. Color tips flag furniture that blends into the walls, or dark walls in a small or dim room.
 - **Layout check.** A rule-based "linter" for rooms, with no AI. It flags overlapping pieces, blocked door swings, tall furniture in front of windows, desks without room for a chair, and drawers or doors with no space to open. It also gives softer tips: a tight side of the bed, or a desk or plant far from daylight. Every message includes the measured numbers, and clicking it jumps to the piece to move. Pieces with warnings are outlined in amber.
 - **Doors and windows.** Add them from the library, drag them along a wall or onto a different wall, and set width, height and sill height precisely. Walls are split around each opening, with no boolean geometry. Doors show their swing arc on the floor, so you can see what space to keep clear. A door between two rooms is cut into both rooms' walls and swings into both unless you set **Opens into: Next room** on the side it swings away from (a bedroom, for its closet door); that side then draws no arc and the layout check keeps no floor clear for it. In plan view, walls are cut at 1.2 m like an architectural floor plan, so windows show as the classic double line.
+- **Light and materials.** Rooms are lit by a generated environment (a bright ceiling, a warm window, a cooler one opposite, the floor's bounce) plus a sun for shadows, so glaze, steel and varnished floors catch reflections. Ambient occlusion darkens corners, the gap under a bed and the seams between pieces, a little more in Preview. Wood has a grain that runs along each board and takes the palette's wood colors; furniture edges are rounded by a few millimeters; textiles have a soft sheen and sanitaryware a glaze. Indoor walls get an 8 cm skirting board that stops at doors.
 - **Camera.** Orbit, pan and zoom in 3D. Switch to an orthographic **Plan** view for a true floor plan. Walls between the camera and the room cut away automatically.
 - **Select and move.** Click to select, then drag across the floor. Snapping goes to a 1, 5 or 10 cm grid, and edges within 6 cm of a wall stick flush to it. Hold Alt to move freely.
 - **Precise properties.** Position, elevation, rotation and size are all editable in cm. Fields accept units and simple sums (`1.2m`, `450mm`, `120+35`). You can also drag a field's label to scrub the value, or use ↑/↓ to step it.
@@ -139,6 +140,8 @@ src/
     autosave.ts            debounced persistence
   scene/                   everything inside <Canvas>
     Viewport.tsx           canvas setup
+    Lights.tsx             generated environment, fill light and the shadow-casting sun
+    Effects.tsx            ambient occlusion and tone mapping (loaded after the scene)
     CameraRig.tsx          perspective / plan cameras + OrbitControls
     RoomShell.tsx          floor + walls, cutaway animation; garden ground and courtyard paving
     Roof.tsx               terracotta hip roof, ridge caps, chimney
@@ -159,14 +162,14 @@ src/
 
 If you're new to 3D programming, this order goes from the basics to the interactions:
 
-1. **`scene/models/Box.tsx` → `models/Desk.tsx`**: a mesh is a geometry (shape) plus a material (surface). Every piece of furniture is a handful of positioned boxes.
+1. **`scene/models/Box.tsx` → `models/Desk.tsx`**: a mesh is a geometry (shape) plus a material (surface). Every piece of furniture is a handful of positioned boxes, with rounded edges and texture coordinates in meters.
 2. **`scene/FurnitureItem.tsx`**: a `<group>` moves and rotates its children together. This is where data (meters, degrees) becomes a transform (position, radians).
-3. **`scene/Lights.tsx`**: hemisphere light for soft fill plus a directional "sun" for shadows.
+3. **`scene/Lights.tsx`**: an environment map drawn once from a few glowing panels, a hemisphere light for extra fill and a directional "sun" for shadows.
 4. **`scene/CameraRig.tsx`**: perspective vs. orthographic cameras, and what OrbitControls does.
 5. **`scene/RoomShell.tsx`**: `useFrame` runs every frame. Mutate meshes directly here; don't go through React state.
 6. **`scene/useFurnitureDrag.ts`**: raycasting turns a 2D mouse position into a 3D point on the floor. Most editor interaction is built on this.
 7. **`scene/ScreenLabel.tsx`**: the reverse, projecting a 3D point onto the 2D screen.
 8. **`lib/openings.ts` → `scene/ClippedBox.tsx`**: holes in walls without CSG. The wall is split into boxes around each opening, and each box clips itself to the wall's animated height.
 9. **`scene/useOpeningDrag.ts`**: the same raycasting idea, but against vertical wall planes instead of the floor.
-10. **`scene/materials.ts` → `applyPalette`**: every mesh shares a handful of material objects, so recoloring the room is a few `color.set()` calls, with no re-render and no new geometry. The floor texture holds only the plank variation, and the material color tints it.
+10. **`scene/materials.ts` → `applyPalette`**: every mesh shares a handful of material objects, so recoloring the room is a few `color.set()` calls, with no re-render and no new geometry. The floor and wood-grain textures hold only the variation, and the material color tints them.
 11. **`lib/layoutChecks.ts`**: once the data is clean, design rules turn into short functions. Overlap uses the separating axis test, and clearance is measured by casting 2D rays.
